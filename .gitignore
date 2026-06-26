@@ -56,7 +56,13 @@ Thumbs.db
 # ==========================
 # PostgreSQL
 # ==========================
-*.sql
+# Ignore database dumps only
+*.dump
+*.bak
+
+# Track ShadowDock database source files
+!server/database/**/*.sql
+
 
 # ==========================
 # Docker
