@@ -1,160 +1,77 @@
-import express from "express"
-import http from "http"
-import { Server } from "socket.io"
-import cors from "cors"
-import pool from "./config/db.js"
+import process from "process";
+import http from "http";
+import { Server } from "socket.io";
 
-const app = express()
+import app from "./app.js";
+import env from "./config/env.js";
 
-/* ---------------- CORS ---------------- */
+import pool, {
+  testConnection,
+} from "./config/db.js";
 
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-    ],
-    methods: ["GET", "POST"],
-  })
-)
+import setupSocket from "./socket/index.js";
 
-app.use(express.json())
-
-/* ---------------- HTTP SERVER ---------------- */
-
-const server = http.createServer(app)
-
-/* ---------------- SOCKET SERVER ---------------- */
+const server =
+  http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-    ],
-    methods: ["GET", "POST"],
+    origin: env.client.url,
+    credentials: true,
   },
-})
+});
 
-/* ---------------- SOCKET CONNECTION ---------------- */
+setupSocket(io, pool);
 
-io.on("connection", (socket) => {
-
-  console.log("User connected:", socket.id)
-
-  socket.on("send_message", async (messageData) => {
-
-    try {
-
-      const { chat_id, sender, text } = messageData
-
-      const result = await pool.query(
-        `
-        INSERT INTO messages (chat_id, sender, text)
-        VALUES ($1, $2, $3)
-        RETURNING *
-        `,
-        [chat_id, sender, text]
-      )
-
-      const savedMessage = result.rows[0]
-
-      io.emit("receive_message", savedMessage)
-
-    } catch (err) {
-
-      console.log("Message save error:", err)
-
-    }
-
-  })
-  /* ---------------- TYPING ---------------- */
-
-  socket.on("typing", ({ chat_id, user }) => {
-
-  socket.broadcast.emit(
-    "user_typing",
-    {
-      chat_id,
-      user,
-    }
-  )
-
-  })
-
-  socket.on("stop_typing", ({ chat_id }) => {
-
-  socket.broadcast.emit(
-    "user_stop_typing",
-    {
-      chat_id,
-    }
-  )
-
-})
-  socket.on("disconnect", () => {
-
-    console.log("User disconnected:", socket.id)
-
-  })
-
-})
-
-/* ---------------- ROUTES ---------------- */
-
-app.get("/", (req, res) => {
-
-  res.send("ShadowDock Backend Online ⚡")
-
-})
-
-app.get("/messages/:chatId", async (req, res) => {
-
+async function startServer() {
   try {
+    await testConnection();
 
-    const { chatId } = req.params
+    console.log(
+      "🟢 PostgreSQL connected."
+    );
 
-    const result = await pool.query(
-      `
-      SELECT * FROM messages
-      WHERE chat_id = $1
-      ORDER BY created_at ASC
-      `,
-      [chatId]
-    )
-
-    res.json(result.rows)
-
+    server.listen(
+      env.server.port,
+      () => {
+        console.log(
+          `🚀 Server running on port ${env.server.port}`
+        );
+      }
+    );
   } catch (err) {
+    console.error(
+      "Failed to start server:",
+      err
+    );
 
-    console.log(err)
-
-    res.status(500).json({
-      error: "Failed to fetch messages",
-    })
-
+    process.exit(1);
   }
+}
 
-})
+startServer();
 
-/* ---------------- START SERVER ---------------- */
+/* ---------------- SHUTDOWN ---------------- */
 
-server.listen(5000, () => {
+async function shutdown() {
+  console.log(
+    "🛑 Server shutting down..."
+  );
 
-  console.log("Server running on port 5000")
+  server.close(async () => {
+    try {
+      await pool.end();
 
-})
+      console.log(
+        "🟢 PostgreSQL pool closed."
+      );
+    } catch (err) {
+      console.error(err);
+    }
 
-/* ---------------- DATABASE ---------------- */
+    process.exit(0);
+  });
+}
 
-pool.connect()
-  .then(() => {
-
-    console.log("PostgreSQL connected")
-
-  })
-  .catch((err) => {
-
-    console.log(err)
-
-  })
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
