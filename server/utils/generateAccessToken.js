@@ -1,18 +1,19 @@
 import jwt from "jsonwebtoken";
 import env from "../config/env.js";
 
-function generateAccessToken(user) {
+function generateAccessToken(
+  payload
+) {
   return jwt.sign(
-    {
-      id: user.id,
-      publicId: user.public_id,
-      username: user.username,
-    },
+    payload,
     env.jwt.accessSecret,
     {
-      expiresIn: env.jwt.accessExpires,
-      issuer: env.jwt.issuer,
-      audience: env.jwt.audience,
+      expiresIn:
+        env.jwt.accessExpires,
+      issuer:
+        env.jwt.issuer,
+      audience:
+        env.jwt.audience,
     }
   );
 }

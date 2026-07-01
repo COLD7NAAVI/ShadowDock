@@ -1,17 +1,19 @@
 import jwt from "jsonwebtoken";
 import env from "../config/env.js";
 
-function generateRefreshToken(user) {
+function generateRefreshToken(
+  payload
+) {
   return jwt.sign(
-    {
-      id: user.id,
-      publicId: user.public_id,
-    },
+    payload,
     env.jwt.refreshSecret,
     {
-      expiresIn: env.jwt.refreshExpires,
-      issuer: env.jwt.issuer,
-      audience: env.jwt.audience,
+      expiresIn:
+        env.jwt.refreshExpires,
+      issuer:
+        env.jwt.issuer,
+      audience:
+        env.jwt.audience,
     }
   );
 }
