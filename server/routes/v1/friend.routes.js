@@ -8,6 +8,8 @@ import validate
 
 import {
   sendRequest,
+  getIncomingRequests,
+  getOutgoingRequests,
 } from "../../controllers/friend.controller.js";
 
 import {
@@ -22,6 +24,18 @@ router.post(
   publicIdValidator,
   validate,
   sendRequest
+);
+
+router.get(
+  "/requests/incoming",
+  auth,
+  getIncomingRequests
+);
+
+router.get(
+  "/requests/outgoing",
+  auth,
+  getOutgoingRequests
 );
 
 export default router;

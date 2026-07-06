@@ -19,3 +19,28 @@ export const sendRequest =
       friendship,
     });
   });
+  export const getIncomingRequests =
+  asyncHandler(async (req, res) => {
+    const requests =
+      await friendService.getIncomingRequests(
+        req.user.id
+      );
+
+    res.json({
+      success: true,
+      requests,
+    });
+  });
+
+export const getOutgoingRequests =
+  asyncHandler(async (req, res) => {
+    const requests =
+      await friendService.getOutgoingRequests(
+        req.user.id
+      );
+
+    res.json({
+      success: true,
+      requests,
+    });
+  });

@@ -55,3 +55,52 @@ export async function createFriendRequest(
 
   return result.rows[0];
 }
+export async function getIncomingRequests(
+  userId
+) {
+  const result = await db.query(
+    `
+    SELECT
+      f.id,
+      u.public_id,
+      u.username,
+      u.display_name,
+      f.created_at
+    FROM friendships f
+    JOIN users u
+      ON u.id = f.requester_id
+    WHERE
+      f.addressee_id = $1
+      AND f.status = 'pending'
+    ORDER BY f.created_at DESC
+    `,
+    [userId]
+  );
+
+  return result.rows;
+}
+
+export async function getOutgoingRequests(
+  userId
+) {
+  const result = await db.query(
+    `
+    SELECT
+      f.id,
+      u.public_id,
+      u.username,
+      u.display_name,
+      f.created_at
+    FROM friendships f
+    JOIN users u
+      ON u.id = f.addressee_id
+    WHERE
+      f.requester_id = $1
+      AND f.status = 'pending'
+    ORDER BY f.created_at DESC
+    `,
+    [userId]
+  );
+
+  return result.rows;
+}

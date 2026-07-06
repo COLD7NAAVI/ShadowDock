@@ -1,17 +1,16 @@
 import ApiError from "../utils/ApiError.js";
 
-import {
-  findUserByPublicId,
-  findFriendship,
-  createFriendRequest,
-} from "../repositories/friend.repository.js";
+import * as friendRepository
+  from "../repositories/friend.repository.js";
 
 export async function sendFriendRequest(
   senderId,
   receiverPublicId
 ) {
   const receiver =
-    await findUserByPublicId(receiverPublicId);
+    await friendRepository.findUserByPublicId(
+      receiverPublicId
+    );
 
   if (!receiver) {
     throw new ApiError(
@@ -28,7 +27,7 @@ export async function sendFriendRequest(
   }
 
   const existing =
-    await findFriendship(
+    await friendRepository.findFriendship(
       senderId,
       receiver.id
     );
@@ -40,8 +39,24 @@ export async function sendFriendRequest(
     );
   }
 
-  return await createFriendRequest(
+  return await friendRepository.createFriendRequest(
     senderId,
     receiver.id
+  );
+}
+
+export async function getIncomingRequests(
+  userId
+) {
+  return await friendRepository.getIncomingRequests(
+    userId
+  );
+}
+
+export async function getOutgoingRequests(
+  userId
+) {
+  return await friendRepository.getOutgoingRequests(
+    userId
   );
 }
