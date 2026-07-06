@@ -1,25 +1,14 @@
 import db from "../config/db.js";
 
-export async function findUserByEmail(
-email
-) {
-const result = await db.query(
-`       SELECT *
-      FROM users
-      WHERE email = $1
-      LIMIT 1
-    `,
-[email]
-);
-
-return result.rows[0];
-}
-
-export async function findUserById(
-id
-) {
-const result = await db.query(
-`       SELECT
+/*
+|--------------------------------------------------------------------------
+| Find user by email (internal use only)
+|--------------------------------------------------------------------------
+*/
+export async function findUserByEmail(email) {
+  const result = await db.query(
+    `
+      SELECT
         id,
         public_id,
         username,
@@ -31,43 +20,81 @@ const result = await db.query(
         created_at,
         updated_at
       FROM users
-      WHERE id = $1
+      WHERE email = $1
       LIMIT 1
     `,
-[id]
-);
+    [email]
+  );
 
-return result.rows[0];
+  return result.rows[0];
 }
 
-export async function findUserByPublicId(
-publicId
-) {
-const result = await db.query(
-`       SELECT
+/*
+|--------------------------------------------------------------------------
+| Find user by id (safe for API responses)
+|--------------------------------------------------------------------------
+*/
+export async function findUserById(id) {
+  const result = await db.query(
+    `
+      SELECT
+        id,
         public_id,
         username,
         email,
         is_verified,
         is_online,
-        created_at
+        created_at,
+        updated_at
+      FROM users
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [id]
+  );
+
+  return result.rows[0];
+}
+
+/*
+|--------------------------------------------------------------------------
+| Find user by public id
+|--------------------------------------------------------------------------
+*/
+export async function findUserByPublicId(publicId) {
+  const result = await db.query(
+    `
+      SELECT
+        public_id,
+        username,
+        email,
+        is_verified,
+        is_online,
+        created_at,
+        updated_at
       FROM users
       WHERE public_id = $1
       LIMIT 1
     `,
-[publicId]
-);
+    [publicId]
+  );
 
-return result.rows[0];
+  return result.rows[0];
 }
 
+/*
+|--------------------------------------------------------------------------
+| Create user
+|--------------------------------------------------------------------------
+*/
 export async function createUser({
-username,
-email,
-passwordHash,
+  username,
+  email,
+  passwordHash,
 }) {
-const result = await db.query(
-`       INSERT INTO users
+  const result = await db.query(
+    `
+      INSERT INTO users
       (
         username,
         email,
@@ -84,62 +111,119 @@ const result = await db.query(
         public_id,
         username,
         email,
-        created_at
+        is_verified,
+        is_online,
+        created_at,
+        updated_at
     `,
-[
-username,
-email,
-passwordHash,
-]
-);
+    [
+      username,
+      email,
+      passwordHash,
+    ]
+  );
 
-return result.rows[0];
+  return result.rows[0];
 }
 
+/*
+|--------------------------------------------------------------------------
+| Save hashed refresh token
+|--------------------------------------------------------------------------
+*/
 export async function saveRefreshToken(
-userId,
-refreshToken
+  userId,
+  refreshToken
 ) {
-await db.query(
-`       UPDATE users
+  const result = await db.query(
+    `
+      UPDATE users
       SET
         refresh_token = $1,
         updated_at = NOW()
       WHERE id = $2
+      RETURNING id
     `,
-[
-refreshToken,
-userId,
-]
-);
+    [
+      refreshToken,
+      userId,
+    ]
+  );
+
+  return result.rows[0];
 }
 
+/*
+|--------------------------------------------------------------------------
+| Get hashed refresh token
+|--------------------------------------------------------------------------
+*/
 export async function getRefreshToken(
-userId
+  userId
 ) {
-const result = await db.query(
-`       SELECT refresh_token
+  const result = await db.query(
+    `
+      SELECT
+        refresh_token
       FROM users
       WHERE id = $1
       LIMIT 1
     `,
-[userId]
-);
+    [userId]
+  );
 
-return result.rows[0]
-?.refresh_token;
+  return result.rows[0]?.refresh_token;
 }
 
+/*
+|--------------------------------------------------------------------------
+| Remove refresh token
+|--------------------------------------------------------------------------
+*/
 export async function removeRefreshToken(
-userId
+  userId
 ) {
-await db.query(
-`       UPDATE users
+  const result = await db.query(
+    `
+      UPDATE users
       SET
         refresh_token = NULL,
         updated_at = NOW()
       WHERE id = $1
+      RETURNING id
     `,
-[userId]
-);
+    [userId]
+  );
+
+  return result.rows[0];
+}
+
+/*
+|--------------------------------------------------------------------------
+| Update online status
+|--------------------------------------------------------------------------
+*/
+export async function setUserOnlineStatus(
+  userId,
+  isOnline
+) {
+  const result = await db.query(
+    `
+      UPDATE users
+      SET
+        is_online = $1,
+        updated_at = NOW()
+      WHERE id = $2
+      RETURNING
+        id,
+        public_id,
+        is_online
+    `,
+    [
+      isOnline,
+      userId,
+    ]
+  );
+
+  return result.rows[0];
 }

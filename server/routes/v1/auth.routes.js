@@ -17,11 +17,17 @@ import {
 
 import validate from "../../middleware/validate.middleware.js";
 
-const router =
-  Router();
+import {
+  loginLimiter,
+  registerLimiter,
+  refreshLimiter,
+} from "../../middleware/rateLimit.middleware.js";
+
+const router = Router();
 
 router.post(
   "/register",
+  registerLimiter,
   registerValidator,
   validate,
   register
@@ -29,6 +35,7 @@ router.post(
 
 router.post(
   "/login",
+  loginLimiter,
   loginValidator,
   validate,
   login
@@ -36,6 +43,7 @@ router.post(
 
 router.post(
   "/refresh",
+  refreshLimiter,
   refresh
 );
 
