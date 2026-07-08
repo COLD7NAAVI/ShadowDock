@@ -44,3 +44,45 @@ export const getOutgoingRequests =
       requests,
     });
   });
+  export const acceptRequest =
+  asyncHandler(async (req, res) => {
+    const friendship =
+      await friendService.acceptFriendRequest(
+        req.user.id,
+        req.params.publicId
+      );
+
+    res.json({
+      success: true,
+      message:
+        "Friend request accepted",
+      friendship,
+    });
+  });
+  export const rejectRequest =
+  asyncHandler(async (req, res) => {
+    const friendship =
+      await friendService.rejectFriendRequest(
+        req.user.id,
+        req.params.publicId
+      );
+
+    res.json({
+      success: true,
+      message: "Friend request rejected",
+      friendship,
+    });
+  });
+  
+  export const getFriends =
+  asyncHandler(async (req, res) => {
+    const friends =
+      await friendService.getFriends(
+        req.user.id
+      );
+
+    res.json({
+      success: true,
+      friends,
+    });
+  });

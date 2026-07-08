@@ -60,3 +60,82 @@ export async function getOutgoingRequests(
     userId
   );
 }
+export async function acceptFriendRequest(
+  receiverId,
+  senderPublicId
+) {
+  // Find sender by public ID
+  const sender =
+    await friendRepository.findUserByPublicId(
+      senderPublicId
+    );
+
+  if (!sender) {
+    throw new ApiError(
+      404,
+      "User not found"
+    );
+  }
+
+  // Find pending request
+  const pendingRequest =
+    await friendRepository.findPendingRequest(
+      sender.id,
+      receiverId
+    );
+
+  if (!pendingRequest) {
+    throw new ApiError(
+      404,
+      "Friend request not found"
+    );
+  }
+
+  // Accept request
+  return await friendRepository.acceptFriendRequest(
+    sender.id,
+    receiverId
+  );
+}
+
+export async function rejectFriendRequest(
+  receiverId,
+  senderPublicId
+) {
+  // Find sender
+  const sender =
+    await friendRepository.findUserByPublicId(
+      senderPublicId
+    );
+
+  if (!sender) {
+    throw new ApiError(
+      404,
+      "User not found"
+    );
+  }
+
+  // Find pending request
+  const pendingRequest =
+    await friendRepository.findPendingRequest(
+      sender.id,
+      receiverId
+    );
+
+  if (!pendingRequest) {
+    throw new ApiError(
+      404,
+      "Friend request not found"
+    );
+  }
+
+  // Delete request
+  return await friendRepository.rejectFriendRequest(
+    sender.id,
+    receiverId
+  );
+}
+
+export async function getFriends(userId) {
+  return await friendRepository.getFriends(userId);
+}
