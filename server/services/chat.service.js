@@ -3,31 +3,47 @@ import {
 } from "../config/db.js";
 
 import ApiError from "../utils/ApiError.js";
-import { getUserChats } from "../repositories/chat.repository.js";
+
 import {
+
+    getUserChats,
+
     findUserByPublicId,
+
     findPrivateChat,
+
     createPrivateChat,
+
     addChatMember
+
 } from "../repositories/chat.repository.js";
 
 /*
 |--------------------------------------------------------------------------
-| Create Private Chat
+| Create Private Chat Service
 |--------------------------------------------------------------------------
 |
 | Creates a private conversation between two users.
 |
-| If a private chat already exists, it is returned.
-|
-| This operation is fully transactional.
+| Workflow
+| --------
+| 1. Validate target user.
+| 2. Prevent self-chat.
+| 3. Return existing chat if found.
+| 4. Create chat.
+| 5. Add requester.
+| 6. Add target.
+| 7. Commit transaction.
 |
 */
 
-export async function createPrivateChatService(
+export async function createPrivateChatService({
+
     requesterId,
+
     targetPublicId
-) {
+
+}) {
 
     const client = await getClient();
 
@@ -35,110 +51,178 @@ export async function createPrivateChatService(
 
         await client.query("BEGIN");
 
-        // ------------------------------------------------------------
-        // Validate target user
-        // ------------------------------------------------------------
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Target User
+        |--------------------------------------------------------------------------
+        */
 
         const targetUser = await findUserByPublicId(
             targetPublicId
         );
 
         if (!targetUser) {
+
             throw new ApiError(
+
                 404,
+
                 "User not found."
+
             );
+
         }
 
-        // ------------------------------------------------------------
-        // Prevent self-chat
-        // ------------------------------------------------------------
+        /*
+        |--------------------------------------------------------------------------
+        | Prevent Self Chat
+        |--------------------------------------------------------------------------
+        */
 
         if (targetUser.id === requesterId) {
+
             throw new ApiError(
+
                 400,
+
                 "You cannot create a chat with yourself."
+
             );
+
         }
 
-        // ------------------------------------------------------------
-        // Check whether private chat already exists
-        // ------------------------------------------------------------
+        /*
+        |--------------------------------------------------------------------------
+        | Return Existing Private Chat
+        |--------------------------------------------------------------------------
+        */
 
-        const existingChat =
-            await findPrivateChat(
-                requesterId,
-                targetUser.id
-            );
-        
+        const existingChat = await findPrivateChat(
+
+            requesterId,
+
+            targetUser.id
+
+        );
+
         if (existingChat) {
 
             await client.query("COMMIT");
 
             return {
-                chat: existingChat,
-                created: false
+
+                created: false,
+
+                chat: existingChat
+
             };
+
         }
 
-        // ------------------------------------------------------------
-        // Create private chat
-        // ------------------------------------------------------------
+        /*
+        |--------------------------------------------------------------------------
+        | Create Chat
+        |--------------------------------------------------------------------------
+        */
 
-        const chat =
-            await createPrivateChat(
-                client,
-                requesterId,
-                targetUser.id
-            );
+        const chat = await createPrivateChat(
 
-        // ------------------------------------------------------------
-        // Add requester
-        // ------------------------------------------------------------
+            client,
+
+            requesterId
+
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Add Requester
+        |--------------------------------------------------------------------------
+        */
 
         await addChatMember(
+
             client,
+
             {
+
                 chatId: chat.chatId,
+
                 userId: requesterId,
-                role: "owner",
-                createdBy: requesterId
+
+                role: "owner"
+
             }
+
         );
 
-        // ------------------------------------------------------------
-        // Add target user
-        // ------------------------------------------------------------
+        /*
+        |--------------------------------------------------------------------------
+        | Add Target User
+        |--------------------------------------------------------------------------
+        */
 
         await addChatMember(
+
             client,
+
             {
+
                 chatId: chat.chatId,
+
                 userId: targetUser.id,
-                role: "member",
-                invitedBy: requesterId,
-                createdBy: requesterId
+
+                role: "member"
+
             }
+
         );
 
-        // ------------------------------------------------------------
-        // Commit
-        // ------------------------------------------------------------
+        /*
+        |--------------------------------------------------------------------------
+        | Commit Transaction
+        |--------------------------------------------------------------------------
+        */
 
         await client.query("COMMIT");
 
         return {
-            chat,
-            created: true
+
+            created: true,
+
+            chat
+
         };
 
-    } catch (error) {
+    }
 
-        await client.query("ROLLBACK");
+    catch (error) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Rollback Transaction
+        |--------------------------------------------------------------------------
+        */
+
+        try {
+
+            await client.query("ROLLBACK");
+
+        }
+
+        catch {
+
+            /*
+            | Ignore rollback failure.
+            | Original error is more important.
+            */
+
+        }
 
         throw error;
 
-    } finally {
+    }
+
+    finally {
 
         client.release();
 
