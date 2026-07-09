@@ -4,6 +4,7 @@ import authRoutes from "./v1/auth.routes.js";
 import messageRoutes from "./v1/message.routes.js";
 import userRoutes from "./v1/user.routes.js";
 import friendRoutes from "./v1/friend.routes.js";
+import chatRoutes from "./v1/chat.routes.js";
 
 const router = Router();
 
@@ -18,6 +19,10 @@ router.use(
 router.use(
   "/friends",
   friendRoutes
+);
+router.use(
+    "/chats",
+    chatRoutes
 );
 
 export default router;

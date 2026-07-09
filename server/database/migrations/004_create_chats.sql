@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS chats (
     -- chat_A82KDJ29QP
     -- ============================================================
 
-    public_id VARCHAR(24)
+    public_id VARCHAR(32)
         NOT NULL
         UNIQUE,
 
@@ -262,6 +262,9 @@ ON chats(owner_id);
 
 CREATE INDEX idx_chats_type
 ON chats(chat_type);
+
+CREATE INDEX idx_chats_type_created
+ON chats(chat_type, created_at DESC);
 
 CREATE INDEX idx_chats_visibility
 ON chats(visibility);

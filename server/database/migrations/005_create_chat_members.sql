@@ -287,6 +287,9 @@ ON chat_members(chat_id);
 CREATE INDEX idx_chat_members_user
 ON chat_members(user_id);
 
+CREATE INDEX idx_chat_members_chat_user
+ON chat_members(chat_id, user_id);
+
 CREATE INDEX idx_chat_members_role
 ON chat_members(role);
 
