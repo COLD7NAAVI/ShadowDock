@@ -1,6 +1,6 @@
 import db from "../config/db.js";
 
-export async function getUserById(userId) {
+export async function findUserById(userId) {
   const result = await db.query(
     `
     SELECT
@@ -25,7 +25,7 @@ export async function getUserById(userId) {
   return result.rows[0];
 }
 
-export async function getUserByPublicId(publicId) {
+export async function findUserByPublicId(publicId) {
   const result = await db.query(
     `
     SELECT
@@ -103,4 +103,88 @@ export async function searchUsers(query) {
   );
 
   return result.rows;
+}
+/*
+|--------------------------------------------------------------------------
+| Mark User Online
+|--------------------------------------------------------------------------
+*/
+
+export async function setUserOnline(
+    userId
+) {
+
+    const result = await db.query(
+
+        `
+        UPDATE users
+        SET
+
+            is_online = TRUE,
+
+            updated_at = NOW()
+
+        WHERE id = $1
+
+        RETURNING
+
+            id,
+            public_id,
+            is_online,
+            last_seen;
+        `,
+
+        [
+
+            userId
+
+        ]
+
+    );
+
+    return result.rows[0] ?? null;
+
+}
+/*
+|--------------------------------------------------------------------------
+| Mark User Offline
+|--------------------------------------------------------------------------
+*/
+
+export async function setUserOffline(
+    userId
+) {
+
+    const result = await db.query(
+
+        `
+        UPDATE users
+        SET
+
+            is_online = FALSE,
+
+            last_seen = NOW(),
+
+            updated_at = NOW()
+
+        WHERE id = $1
+
+        RETURNING
+
+            id,
+            public_id,
+            is_online,
+            last_seen;
+        `,
+
+        [
+
+            userId
+
+        ]
+
+    );
+
+    return result.rows[0] ?? null;
+
 }
