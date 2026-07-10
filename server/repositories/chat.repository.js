@@ -43,6 +43,64 @@ export async function findUserByPublicId(
     return result.rows[0] ?? null;
 
 }
+/*
+|--------------------------------------------------------------------------
+| Find Chat By Public ID
+|--------------------------------------------------------------------------
+|
+| Returns a chat using its public UUID.
+|
+| Used by:
+| • Message Service
+| • Attachment Service
+| • Reaction Service
+| • Future Socket Gateway
+|
+*/
+
+export async function findChatByPublicId(
+    publicId
+) {
+
+    const result = await query(
+
+        `
+        SELECT
+
+            id,
+
+            public_id,
+
+            type,
+
+            name,
+
+            avatar_url,
+
+            created_at,
+
+            updated_at
+
+        FROM chats
+
+        WHERE
+
+            public_id = $1
+
+        LIMIT 1;
+        `,
+
+        [
+
+            publicId
+
+        ]
+
+    );
+
+    return result.rows[0] ?? null;
+
+}
 
 /*
 |--------------------------------------------------------------------------
