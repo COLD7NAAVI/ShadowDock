@@ -68,3 +68,30 @@ export async function markUserOffline(
     );
 
 }
+/*
+|--------------------------------------------------------------------------
+| Socket Authentication
+|--------------------------------------------------------------------------
+*/
+
+export async function getUserForSocketAuth(
+
+    userId
+
+) {
+
+    const user = await findUserById(
+
+        userId
+
+    );
+
+    if (!user) {
+
+        return null;
+
+    }
+
+    return user;
+
+}

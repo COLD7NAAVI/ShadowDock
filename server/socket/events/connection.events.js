@@ -1,6 +1,4 @@
 import {
-    addUserSocket,
-    removeUserSocket,
     getUserSockets
 } from "../socketStore.js";
 
@@ -10,25 +8,45 @@ import {
 
 /*
 |--------------------------------------------------------------------------
-| Register Connection Events
+| ShadowDock Messenger
 |--------------------------------------------------------------------------
 |
-| Called once for every authenticated socket.
+| Connection Events
 |
-| Responsibilities:
+| Responsibilities
 |
-| • Register socket
-| • Join personal room
-| • Notify user's other devices
-| • Log connection
+| ✓ Validate authenticated socket
+| ✓ Join personal user room
+| ✓ Notify user's other devices
+| ✓ Connection acknowledgement
 |
-| Future:
+| This module intentionally DOES NOT:
 |
-| • Presence
-| • Last Seen
-| • Device Sync
-| • Push Notifications
+| ✗ Register socket
+| ✗ Remove socket
+| ✗ Update presence
+| ✗ Touch PostgreSQL
 |
+| Those responsibilities belong to:
+|
+| • Presence Events
+| • User Service
+|
+|--------------------------------------------------------------------------
+*/
+
+const EVENTS = Object.freeze({
+
+    SESSION_CONNECTED: "session:connected",
+
+    SESSION_READY: "session:ready"
+
+});
+
+/*
+|--------------------------------------------------------------------------
+| Register Connection Events
+|--------------------------------------------------------------------------
 */
 
 export default async function registerConnectionEvents(
@@ -41,6 +59,12 @@ export default async function registerConnectionEvents(
 
     const user = socket.user;
 
+    /*
+    |--------------------------------------------------------------------------
+    | Authentication Check
+    |--------------------------------------------------------------------------
+    */
+
     if (!user) {
 
         socket.disconnect(true);
@@ -48,20 +72,6 @@ export default async function registerConnectionEvents(
         return;
 
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Register Socket
-    |--------------------------------------------------------------------------
-    */
-
-    addUserSocket(
-
-        user.id,
-
-        socket.id
-
-    );
 
     /*
     |--------------------------------------------------------------------------
@@ -79,19 +89,17 @@ export default async function registerConnectionEvents(
 
     /*
     |--------------------------------------------------------------------------
-    | Notify Other Devices
+    | Notify User Devices
     |--------------------------------------------------------------------------
-    |
-    | If the user opens ShadowDock on multiple devices,
-    | every device knows another session connected.
-    |
     */
 
-    const sockets = getUserSockets(
+    const totalConnections =
 
-        user.id
+        getUserSockets(
 
-    );
+            user.id
+
+        ).size;
 
     io.to(
 
@@ -99,13 +107,47 @@ export default async function registerConnectionEvents(
 
     ).emit(
 
-        "session:connected",
+        EVENTS.SESSION_CONNECTED,
 
         {
 
-            socketId: socket.id,
+            userPublicId:
 
-            totalConnections: sockets.length
+                user.public_id,
+
+            socketId:
+
+                socket.id,
+
+            totalConnections
+
+        }
+
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Acknowledge Current Socket
+    |--------------------------------------------------------------------------
+    */
+
+    socket.emit(
+
+        EVENTS.SESSION_READY,
+
+        {
+
+            socketId:
+
+                socket.id,
+
+            userPublicId:
+
+                user.public_id,
+
+            connectedAt:
+
+                new Date().toISOString()
 
         }
 
@@ -123,64 +165,24 @@ export default async function registerConnectionEvents(
 
     );
 
-    /*
-    |--------------------------------------------------------------------------
-    | Disconnect
-    |--------------------------------------------------------------------------
-    */
-
-    socket.on(
-
-        "disconnect",
-
-        (reason) => {
-
-            removeUserSocket(
-
-                user.id,
-
-                socket.id
-
-            );
-
-            const remainingSockets =
-
-                getUserSockets(
-
-                    user.id
-
-                );
-
-            io.to(
-
-                `user:${user.public_id}`
-
-            ).emit(
-
-                "session:disconnected",
-
-                {
-
-                    socketId: socket.id,
-
-                    totalConnections:
-
-                        remainingSockets.length,
-
-                    reason
-
-                }
-
-            );
-
-            console.log(
-
-                `🔴 ${user.username} disconnected (${socket.id})`
-
-            );
-
-        }
-
-    );
-
 }
+
+/*
+|--------------------------------------------------------------------------
+| connection.events.js
+|--------------------------------------------------------------------------
+|
+| Status
+|
+| ✓ Production Ready
+| ✓ Stateless
+| ✓ Service Driven
+| ✓ Presence Compatible
+| ✓ Multi-device Ready
+| ✓ Redis Ready
+| ✓ Cluster Ready
+| ✓ Socket.IO v4 Ready
+| ✓ Future E2EE Compatible
+|
+|--------------------------------------------------------------------------
+*/

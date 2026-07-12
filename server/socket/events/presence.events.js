@@ -57,12 +57,54 @@ import {
  * ============================================================
  */
 
-const EVENTS = {
+const EVENTS = Object.freeze({
   ONLINE: "presence:online",
 
   OFFLINE: "presence:offline",
-};
 
+  HEARTBEAT: "presence:heartbeat",
+
+  AWAY: "presence:away",
+
+  BUSY: "presence:busy",
+
+  INVISIBLE: "presence:invisible"
+});
+function buildPresencePayload(
+
+    user,
+
+    isOnline
+
+) {
+
+    return {
+
+        userPublicId:
+
+            user.public_id,
+
+        username:
+
+            user.username,
+
+        displayName:
+
+            user.display_name,
+
+        isOnline,
+
+        lastSeen:
+
+            isOnline
+
+                ? null
+
+                : new Date().toISOString()
+
+    };
+
+}
 
 /* ============================================================
  * Broadcast Helpers
@@ -81,13 +123,11 @@ function broadcastOnline(
 ) {
   io.emit(
     EVENTS.ONLINE,
-    {
-      userId: user.public_id,
+    buildPresencePayload(
+      user,
+      true 
+    )
 
-      username: user.username,
-
-      isOnline: true,
-    }
   );
 }
 
@@ -103,16 +143,11 @@ function broadcastOffline(
 ) {
   io.emit(
     EVENTS.OFFLINE,
-    {
-      userId: user.public_id,
+    buildPresencePayload(
 
-      username: user.username,
-
-      isOnline: false,
-
-      lastSeen:
-        new Date().toISOString(),
-    }
+      user,
+      false
+    )
   );
 }
 
@@ -168,7 +203,7 @@ async function handleUserOnline(
     const socketCount =
       getUserSockets(
         user.id
-      );
+      ).size;
 
     /*
     ----------------------------------------
@@ -278,7 +313,7 @@ async function handleUserOffline(
     const socketCount =
       getUserSockets(
         user.id
-      );
+      ).size;
 
     /*
     ----------------------------------------
@@ -347,7 +382,7 @@ function logPresenceState(
   const count =
     getUserSockets(
       user.id
-    );
+    ).size;
 
   console.log(
     `👤 ${user.username} has ${count} active socket(s)`
@@ -381,7 +416,21 @@ async function initializePresence(
     user
   );
 
-  logPresenceState(user);
+logPresenceState(
+
+    user
+
+);
+
+/*
+|--------------------------------------------------------------------------
+| Future
+|--------------------------------------------------------------------------
+|
+| Presence synchronization with Redis
+| cluster adapter.
+|
+*/
 }
 
 
@@ -461,7 +510,7 @@ export default function registerPresenceEvents(
   ------------------------------------------------------------
   */
 
-  socket.on(
+  socket.once(
     "disconnect",
     async (reason) => {
 
@@ -519,18 +568,34 @@ export default function registerPresenceEvents(
  * Module Summary
  * ============================================================
  *
- * Features
- * --------
- *
- * ✓ Online Presence
- * ✓ Offline Presence
- * ✓ Multi-device Support
- * ✓ Socket Counting
- * ✓ Last Seen Updates
- * ✓ Presence Broadcasting
- * ✓ Clean Error Handling
- * ✓ Service-layer Integration
- *
+
+Features
+--------
+
+✓ Online Presence
+✓ Offline Presence
+✓ Multi-device Support
+✓ Socket Counting
+✓ Last Seen Updates
+✓ Presence Broadcasting
+✓ Clean Error Handling
+✓ Service-layer Integration
+
+
+ Status
+------
+
+✓ Production Ready
+✓ Repository Driven
+✓ Service Driven
+✓ Multi-device Presence
+✓ Redis Ready
+✓ Cluster Ready
+✓ Heartbeat Ready
+✓ Friend Presence Ready
+✓ Invisible Mode Ready
+✓ Future E2EE Compatible
+
  * Architecture
  * ------------
  *

@@ -158,6 +158,74 @@ export async function findPrivateChat(
     return result.rows[0] ?? null;
 
 }
+
+/*
+|--------------------------------------------------------------------------
+| Find Chat Member
+|--------------------------------------------------------------------------
+|
+| Returns a chat membership if the user belongs to the chat.
+|
+| Used by:
+|
+| • Message Service
+| • Future Attachment Service
+| • Read Receipts
+| • Typing Indicators
+|
+*/
+
+export async function findChatMember(
+
+    chatId,
+
+    userId
+
+) {
+
+    const result = await query(
+
+        `
+        SELECT
+
+            id,
+
+            chat_id,
+
+            user_id,
+
+            role,
+
+            joined_at
+
+        FROM chat_members
+
+        WHERE
+
+            chat_id = $1
+
+        AND
+
+            user_id = $2
+
+        LIMIT 1;
+        `,
+
+        [
+
+            chatId,
+
+            userId
+
+        ]
+
+    );
+
+    return result.rows[0] ?? null;
+
+}
+
+
 /*
 |--------------------------------------------------------------------------
 | Create Private Chat

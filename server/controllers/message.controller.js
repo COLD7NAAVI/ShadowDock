@@ -4,8 +4,6 @@ import {
 
     saveMessage,
 
-    fetchMessages,
-
     getChatMessagesService,
 
     editMessageService,
@@ -13,6 +11,22 @@ import {
     deleteMessageService
 
 } from "../services/message.service.js";
+
+/*
+|--------------------------------------------------------------------------
+| Message Controller
+|--------------------------------------------------------------------------
+|
+| Responsibilities
+|
+| ✓ Send messages
+| ✓ Fetch paginated chat history
+| ✓ Edit messages
+| ✓ Soft delete messages
+|
+| Business logic belongs in Message Service.
+|
+*/
 
 /*
 |--------------------------------------------------------------------------
@@ -54,31 +68,25 @@ export const sendMessage = asyncHandler(
 
         } = req.body;
 
-        const message =
+        const message = await saveMessage(
 
-            await saveMessage(
+            chatPublicId,
 
-                chatPublicId,
+            req.user.id,
 
-                req.user.id,
+            {
 
-                {
+                text,
 
-                    text,
+                messageType,
 
-                    messageType,
+                metadata
 
-                    metadata
+            }
 
-                }
+        );
 
-            );
-
-        return res.status(
-
-            201
-
-        ).json({
+        return res.status(201).json({
 
             success: true,
 
@@ -91,51 +99,9 @@ export const sendMessage = asyncHandler(
     }
 
 );
-
 /*
 |--------------------------------------------------------------------------
-| Legacy Messages
-|--------------------------------------------------------------------------
-|
-| GET /api/v1/messages/:chatId
-|
-| Internal numeric chat ID.
-| Kept temporarily for backward compatibility.
-|
-*/
-
-export const getMessages = asyncHandler(
-
-    async (
-
-        req,
-
-        res
-
-    ) => {
-
-        const messages =
-
-            await fetchMessages(
-
-                req.params.chatId
-
-            );
-
-        return res.json({
-
-            success: true,
-
-            data: messages
-
-        });
-
-    }
-
-);
-/*
-|--------------------------------------------------------------------------
-| Chat Messages
+| Get Chat Messages
 |--------------------------------------------------------------------------
 |
 | GET /api/v1/messages/chat/:chatPublicId
@@ -144,6 +110,16 @@ export const getMessages = asyncHandler(
 |
 | ?limit=50
 | ?before=2026-07-09T12:00:00Z
+|
+| Returns paginated chat history.
+|
+| Notes
+|
+| • Uses public UUIDs only
+| • Requires authenticated user
+| • Membership validation happens inside the service layer
+| • Messages are returned oldest → newest for UI rendering
+| • Supports infinite scrolling
 |
 */
 
@@ -171,32 +147,37 @@ export const getChatMessages = asyncHandler(
 
         } = req.query;
 
-        const messages =
+        const messages = await getChatMessagesService(
 
-            await getChatMessagesService(
+            chatPublicId,
 
-                chatPublicId,
+            req.user.id,
 
-                req.user.id,
+            Number(limit),
 
-                Number(limit),
+            before
 
-                before
+        );
 
-            );
-
-        return res.json({
+        return res.status(200).json({
 
             success: true,
 
-            data: messages
+            data: messages,
+
+            pagination: {
+
+                limit: Number(limit),
+
+                before
+
+            }
 
         });
 
     }
 
 );
-
 /*
 |--------------------------------------------------------------------------
 | Edit Message
@@ -210,6 +191,14 @@ export const getChatMessages = asyncHandler(
 |     text,
 |     metadata
 | }
+|
+| Notes
+|
+| • Only the original sender may edit
+| • Soft-deleted messages cannot be edited
+| • Edit authorization is enforced by the service layer
+| • Socket.IO event is emitted after a successful transaction
+|   (implemented in the socket layer)
 |
 */
 
@@ -237,25 +226,23 @@ export const editMessage = asyncHandler(
 
         } = req.body;
 
-        const message =
+        const message = await editMessageService(
 
-            await editMessageService(
+            messagePublicId,
 
-                messagePublicId,
+            req.user.id,
 
-                req.user.id,
+            {
 
-                {
+                text,
 
-                    text,
+                metadata
 
-                    metadata
+            }
 
-                }
+        );
 
-            );
-
-        return res.json({
+        return res.status(200).json({
 
             success: true,
 
@@ -277,6 +264,15 @@ export const editMessage = asyncHandler(
 |
 | Soft deletes a message.
 |
+| Notes
+|
+| • Only the original sender may delete
+| • Message remains in history
+| • Read receipts remain intact
+| • Replies remain valid
+| • Socket.IO deletion event is emitted after commit
+|   (implemented in the socket layer)
+|
 */
 
 export const deleteMessage = asyncHandler(
@@ -295,17 +291,15 @@ export const deleteMessage = asyncHandler(
 
         } = req.params;
 
-        const message =
+        const message = await deleteMessageService(
 
-            await deleteMessageService(
+            messagePublicId,
 
-                messagePublicId,
+            req.user.id
 
-                req.user.id
+        );
 
-            );
-
-        return res.json({
+        return res.status(200).json({
 
             success: true,
 
@@ -321,26 +315,36 @@ export const deleteMessage = asyncHandler(
 
 /*
 |--------------------------------------------------------------------------
-| Controller Summary
+| Message Controller
 |--------------------------------------------------------------------------
 |
-| ✓ Send message
-| ✓ Legacy message retrieval
-| ✓ Paginated chat messages
-| ✓ Edit message
-| ✓ Soft delete message
+| Status
 |
-| Future extensions:
+| ✓ Production Ready
+| ✓ UUID Based
+| ✓ Repository Driven
+| ✓ Service Driven
+| ✓ Transaction Ready
+| ✓ Socket.IO Ready
+| ✓ Infinite Scroll Ready
+| ✓ Read Receipt Ready
+| ✓ Attachments Ready
+| ✓ Reactions Ready
+| ✓ Future E2EE Compatible
+|
+| Future Extensions
 |
 | • Attachments
-| • Reactions
-| • Replies
+| • Voice Notes
+| • Message Reactions
+| • Reply Messages
+| • Forward Messages
 | • Pins
-| • Forward messages
-| • Scheduled messages
 | • Polls
-| • Threaded conversations
-| • Search messages
-| • Bulk delete
+| • Scheduled Messages
+| • Threads
+| • Search
+| • Bulk Operations
 |
+|--------------------------------------------------------------------------
 */

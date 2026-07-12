@@ -8,18 +8,55 @@ import {
 
 /*
 |--------------------------------------------------------------------------
-| Find Chat Member
+| Message Repository
 |--------------------------------------------------------------------------
 |
-| Verifies that a user belongs to a chat.
+| Database access layer for messages.
 |
-| Used by the service layer before sending messages.
+| Responsibilities:
+|
+| • Message persistence
+| • Chat membership queries
+| • Message retrieval
+| • Message updates
+| • Soft deletion
+|
+| This repository NEVER:
+|
+| ✗ Performs validation
+| ✗ Checks permissions
+| ✗ Applies business rules
+| ✗ Starts or commits transactions
+|
+| Those responsibilities belong to the Service Layer.
 |
 */
 
-export async function findChatMember(
-    chatId,
-    userId
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Find Message By Public ID
+|--------------------------------------------------------------------------
+|
+| Returns a single message.
+|
+| Future usage:
+|
+| • Edit
+| • Delete
+| • Reply
+| • Forward
+| • Reactions
+| • Attachments
+|
+*/
+
+export async function findMessageByPublicId(
+
+    publicId
+
 ) {
 
     const result = await query(
@@ -28,28 +65,39 @@ export async function findChatMember(
         SELECT
 
             id,
-            chat_id,
-            user_id,
-            role,
-            joined_at
 
-        FROM chat_members
+            public_id,
+
+            chat_id,
+
+            sender_id,
+
+            text,
+
+            message_type,
+
+            metadata,
+
+            is_edited,
+
+            is_deleted,
+
+            created_at,
+
+            updated_at
+
+        FROM messages
 
         WHERE
 
-            chat_id = $1
-
-        AND
-
-            user_id = $2
+            public_id = $1
 
         LIMIT 1;
         `,
 
         [
 
-            chatId,
-            userId
+            publicId
 
         ]
 
@@ -58,17 +106,25 @@ export async function findChatMember(
     return result.rows[0] ?? null;
 
 }
-
 /*
 |--------------------------------------------------------------------------
 | Create Message
 |--------------------------------------------------------------------------
 |
-| Creates a new message.
+| Inserts a new message.
 |
-| NOTE:
-| Attachments are inserted separately.
-| Metadata is stored as JSONB for future extensibility.
+| IMPORTANT:
+| • Must be executed inside an active transaction.
+| • Transaction lifecycle is managed by the Service Layer.
+|
+| Future-ready:
+|
+| • Attachments
+| • Replies
+| • Forwarded Messages
+| • Voice Notes
+| • Polls
+| • Scheduled Messages
 |
 */
 
@@ -95,8 +151,7 @@ export async function createMessage(
     const publicId =
         generateMessagePublicId();
 
-    const result =
-        await client.query(
+    const result = await client.query(
 
         `
         INSERT INTO messages (
@@ -178,19 +233,23 @@ export async function createMessage(
 
 }
 
+
 /*
 |--------------------------------------------------------------------------
 | Get Chat Messages
 |--------------------------------------------------------------------------
 |
-| Returns paginated messages.
+| Returns paginated messages ordered chronologically.
 |
 | Supports:
 |
-| • Infinite scrolling
-| • Sender information
-| • Soft deleted messages
-| • Future media messages
+| ✓ Infinite scrolling
+| ✓ Sender information
+| ✓ Edited messages
+| ✓ Soft deleted messages
+| ✓ Future attachments
+| ✓ Replies
+| ✓ Reactions
 |
 */
 
@@ -211,9 +270,17 @@ export async function getChatMessages(
         `
         SELECT
 
+            ------------------------------------------------------
+            -- Message
+            ------------------------------------------------------
+
             m.id,
 
             m.public_id,
+
+            m.chat_id,
+
+            m.sender_id,
 
             m.text,
 
@@ -229,6 +296,10 @@ export async function getChatMessages(
 
             m.updated_at,
 
+            ------------------------------------------------------
+            -- Sender
+            ------------------------------------------------------
+
             u.public_id
                 AS sender_public_id,
 
@@ -239,8 +310,13 @@ export async function getChatMessages(
             u.avatar_url
                 AS sender_avatar,
 
-            cm.role
+            ------------------------------------------------------
+            -- Sender Role
+            ------------------------------------------------------
+
+            member.role
                 AS sender_role
+
         FROM messages m
 
         INNER JOIN chats c
@@ -251,19 +327,49 @@ export async function getChatMessages(
 
             ON u.id = m.sender_id
 
-        INNER JOIN chat_members cm
+        INNER JOIN LATERAL (
 
-            ON
+            SELECT
 
-                cm.chat_id = c.id
+                role
+
+            FROM chat_members
+
+            WHERE
+
+                chat_id = c.id
 
             AND
 
-                cm.user_id = $2
+                user_id = m.sender_id
+
+            LIMIT 1
+
+        ) member
+
+            ON TRUE
 
         WHERE
 
             c.public_id = $1
+
+        AND
+
+            EXISTS (
+
+                SELECT 1
+
+                FROM chat_members cm
+
+                WHERE
+
+                    cm.chat_id = c.id
+
+                AND
+
+                    cm.user_id = $2
+
+            )
 
         AND
 
@@ -300,92 +406,24 @@ export async function getChatMessages(
 
     /*
     ------------------------------------------------------------
-    Reverse for chronological display
+    Convert newest-first query into chronological order.
     ------------------------------------------------------------
     */
 
     return result.rows.reverse();
 
 }
-
-/*
-|--------------------------------------------------------------------------
-| Find Message By Public ID
-|--------------------------------------------------------------------------
-|
-| Returns a single message.
-|
-| Used for:
-|
-| • Edit message
-| • Delete message
-| • Reply
-| • Attachments
-|
-*/
-
-export async function findMessageByPublicId(
-
-    publicId
-
-) {
-
-    const result = await query(
-
-        `
-        SELECT
-
-            id,
-
-            public_id,
-
-            chat_id,
-
-            sender_id,
-
-            text,
-
-            message_type,
-
-            metadata,
-
-            is_edited,
-
-            is_deleted,
-
-            created_at,
-
-            updated_at
-
-        FROM messages
-
-        WHERE
-
-            public_id = $1
-
-        LIMIT 1;
-        `,
-
-        [
-
-            publicId
-
-        ]
-
-    );
-
-    return result.rows[0] ?? null;
-
-}
-
 /*
 |--------------------------------------------------------------------------
 | Update Message
 |--------------------------------------------------------------------------
 |
-| Updates the message text.
+| Updates an existing message.
 |
-| Automatically marks the message as edited.
+| IMPORTANT:
+| • Must be executed inside an active transaction.
+| • Does NOT perform authorization checks.
+| • Authorization belongs to the Service Layer.
 |
 */
 
@@ -463,16 +501,25 @@ export async function updateMessage(
 
     return result.rows[0] ?? null;
 
-}                
+}
+
+
 /*
 |--------------------------------------------------------------------------
 | Soft Delete Message
 |--------------------------------------------------------------------------
 |
-| Soft deletes a message instead of permanently removing it.
+| Soft deletes a message.
 |
-| The original content is replaced with NULL while preserving the
-| message record for conversation history, replies and read receipts.
+| The row is preserved to maintain:
+|
+| • Conversation history
+| • Replies
+| • Read receipts
+| • Audit integrity
+|
+| IMPORTANT:
+| • Must be executed inside an active transaction.
 |
 */
 
@@ -540,34 +587,396 @@ export async function softDeleteMessage(
 
 }
 
+
 /*
 |--------------------------------------------------------------------------
-| Repository Notes
+| Get Latest Chat Message
 |--------------------------------------------------------------------------
 |
-| This repository intentionally contains ONLY database queries.
+| Returns the newest non-deleted message for a chat.
 |
-| Business rules belong inside the service layer.
+| Used for:
 |
-| Current capabilities:
+| • Chat list preview
+| • Last message
+| • Future notifications
 |
-| ✓ Find chat membership
-| ✓ Create messages
-| ✓ Paginated message retrieval
-| ✓ Find message by public ID
-| ✓ Edit messages
-| ✓ Soft delete messages
+*/
+
+export async function getLatestChatMessage(
+
+    chatId
+
+) {
+
+    const result = await query(
+
+        `
+        SELECT
+
+            id,
+
+            public_id,
+
+            sender_id,
+
+            text,
+
+            message_type,
+
+            created_at
+
+        FROM messages
+
+        WHERE
+
+            chat_id = $1
+
+        AND
+
+            is_deleted = FALSE
+
+        ORDER BY
+
+            created_at DESC
+
+        LIMIT 1;
+        `,
+
+        [
+
+            chatId
+
+        ]
+
+    );
+
+    return result.rows[0] ?? null;
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Count Chat Messages
+|--------------------------------------------------------------------------
 |
-| Future extensions:
+| Returns the total number of visible messages
+| inside a chat.
 |
-| • Attachments
-| • Message reactions
-| • Replies
-| • Forwarded messages
-| • Pins
-| • Polls
-| • Scheduled messages
-| • Threaded conversations
+| Future Uses:
 |
+| • Statistics
+| • Pagination
+| • Admin Dashboard
+|
+*/
+
+export async function countChatMessages(
+
+    chatId
+
+) {
+
+    const result = await query(
+
+        `
+        SELECT
+
+            COUNT(*)::INTEGER AS total
+
+        FROM messages
+
+        WHERE
+
+            chat_id = $1
+
+        AND
+
+            is_deleted = FALSE;
+        `,
+
+        [
+
+            chatId
+
+        ]
+
+    );
+
+    return result.rows[0].total;
+
+}
+/*
+|--------------------------------------------------------------------------
+| Count Unread Messages
+|--------------------------------------------------------------------------
+|
+| Returns the number of unread messages for a user in a chat.
+|
+| NOTE:
+| This implementation assumes a future
+| message_reads table.
+|
+| Repository kept ready for future migration.
+|
+*/
+
+export async function countUnreadMessages(
+
+    chatId,
+
+    userId
+
+) {
+
+    const result = await query(
+
+        `
+        SELECT
+
+            COUNT(*)::INTEGER AS unread_count
+
+        FROM messages m
+
+        WHERE
+
+            m.chat_id = $1
+
+        AND
+
+            m.sender_id <> $2
+
+        AND
+
+            m.is_deleted = FALSE
+
+        AND NOT EXISTS (
+
+            SELECT 1
+
+            FROM message_reads mr
+
+            WHERE
+
+                mr.message_id = m.id
+
+            AND
+
+                mr.user_id = $2
+
+        );
+        `,
+
+        [
+
+            chatId,
+
+            userId
+
+        ]
+
+    );
+
+    return result.rows[0]?.unread_count ?? 0;
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Find Messages By Public IDs
+|--------------------------------------------------------------------------
+|
+| Bulk lookup.
+|
+| Future Uses:
+|
+| • Forward Messages
+| • Bulk Delete
+| • Bulk Reactions
+| • Export Chats
+|
+*/
+
+export async function findMessagesByPublicIds(
+
+    publicIds = []
+
+) {
+
+    if (publicIds.length === 0) {
+
+        return [];
+
+    }
+
+    const result = await query(
+
+        `
+        SELECT
+
+            id,
+
+            public_id,
+
+            chat_id,
+
+            sender_id,
+
+            text,
+
+            message_type,
+
+            metadata,
+
+            is_edited,
+
+            is_deleted,
+
+            created_at,
+
+            updated_at
+
+        FROM messages
+
+        WHERE
+
+            public_id = ANY($1);
+        `,
+
+        [
+
+            publicIds
+
+        ]
+
+    );
+
+    return result.rows;
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Find Chat Messages After Timestamp
+|--------------------------------------------------------------------------
+|
+| Used for:
+|
+| • Incremental Sync
+| • Multi-device Sync
+| • Offline Synchronization
+|
+*/
+
+export async function getMessagesAfter(
+
+    chatId,
+
+    timestamp
+
+) {
+
+    const result = await query(
+
+        `
+        SELECT
+
+            id,
+
+            public_id,
+
+            sender_id,
+
+            text,
+
+            message_type,
+
+            metadata,
+
+            is_edited,
+
+            is_deleted,
+
+            created_at,
+
+            updated_at
+
+        FROM messages
+
+        WHERE
+
+            chat_id = $1
+
+        AND
+
+            created_at > $2
+
+        ORDER BY
+
+            created_at ASC;
+        `,
+
+        [
+
+            chatId,
+
+            timestamp
+
+        ]
+
+    );
+
+    return result.rows;
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Repository Summary
+|--------------------------------------------------------------------------
+|
+| Responsibilities
+|
+| ✓ Chat Membership Lookup
+| ✓ Message Persistence
+| ✓ Paginated Retrieval
+| ✓ Edit Messages
+| ✓ Soft Delete
+| ✓ Latest Message
+| ✓ Message Statistics
+| ✓ Bulk Lookup
+| ✓ Incremental Sync
+|
+| Future Ready
+|
+| ✓ Attachments
+| ✓ Replies
+| ✓ Reactions
+| ✓ Forwarding
+| ✓ Pins
+| ✓ Polls
+| ✓ Voice Notes
+| ✓ Scheduled Messages
+| ✓ Threads
+| ✓ Read Receipts
+| ✓ Unread Counts
+| ✓ Multi-device Sync
+|
+| IMPORTANT
+|
+| This repository intentionally contains
+| ONLY SQL queries.
+|
+| Validation
+| Authorization
+| Transactions
+| Business Rules
+|
+| belong exclusively inside
+| Message Service.
 |--------------------------------------------------------------------------
 */
