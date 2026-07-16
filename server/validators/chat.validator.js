@@ -8,57 +8,75 @@ import ApiError from "../utils/ApiError.js";
 */
 
 function handleValidationResult(req, res, next) {
+
     const errors = validationResult(req);
 
     if (errors.isEmpty()) {
+
         return next();
+
     }
 
-    const formattedErrors = errors.array().map(error => ({
-        field: error.path,
-        message: error.msg
-    }));
-
     throw new ApiError(
+
         400,
+
         "Validation failed.",
-        formattedErrors
+
+        errors.array().map(error => ({
+
+            field: error.path,
+
+            message: error.msg
+
+        }))
+
     );
+
 }
 
 /*
 |--------------------------------------------------------------------------
-| Create Private Chat
+| Create Private Chat Validation
 |--------------------------------------------------------------------------
 */
 
 export const validateCreatePrivateChat = [
 
     body("targetPublicId")
+
         .exists({
+
             checkFalsy: true
+
         })
-        .withMessage("Target user is required.")
+
+        .withMessage(
+
+            "Target user is required."
+
+        )
 
         .bail()
 
         .isString()
-        .withMessage("Target user must be a string.")
+
+        .withMessage(
+
+            "Target user must be a string."
+
+        )
 
         .trim()
 
-        .isLength({
-            min: 5,
-            max: 32
-        })
-        .withMessage(
-            "Invalid public ID length."
-        )
+        .isUUID()
 
-        .matches(/^user_[A-Za-z0-9]+$/)
         .withMessage(
-            "Invalid public ID format."
+
+            "Invalid public ID."
+
         ),
 
     handleValidationResult
+
 ];

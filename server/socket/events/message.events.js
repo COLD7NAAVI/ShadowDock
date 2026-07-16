@@ -10,14 +10,6 @@ import {
 
 } from "../../services/message.service.js";
 
-import {
-
-    joinChatRoom,
-
-    leaveChatRoom
-
-} from "../rooms.js";
-
 /*
 |--------------------------------------------------------------------------
 | ShadowDock Messenger
@@ -27,62 +19,167 @@ import {
 |
 | Responsibilities
 |
-| ✓ Join chat rooms
-| ✓ Leave chat rooms
-| ✓ Send messages
-| ✓ Edit messages
-| ✓ Delete messages
-| ✓ Typing indicators
-| ✓ Read receipts (future)
-| ✓ Optimistic acknowledgements
+| ✓ Send Messages
+| ✓ Edit Messages
+| ✓ Delete Messages
+| ✓ Broadcast Realtime Updates
+| ✓ ACK Responses
+| ✓ Future Attachments
+| ✓ Future Replies
+| ✓ Future Voice Notes
 |
-| This file intentionally contains NO business logic.
+| This module intentionally contains:
 |
-| Every operation is delegated to the Service layer.
+| ✗ NO SQL
+| ✗ NO Repository Calls
+| ✗ NO Business Logic
+| ✗ NO Transactions
 |
-|--------------------------------------------------------------------------
-|
-| Event Naming Convention
-|--------------------------------------------------------------------------
-|
-| Client → Server
-|
-| chat:join
-| chat:leave
-| message:send
-| message:edit
-| message:delete
-| typing:start
-| typing:stop
+| All business logic belongs to Message Service.
 |
 |--------------------------------------------------------------------------
-|
-| Server → Client
-|--------------------------------------------------------------------------
-|
-| message:new
-| message:edited
-| message:deleted
-| typing:start
-| typing:stop
-| socket:error
-|
-|--------------------------------------------------------------------------
-|
-| Future
-|--------------------------------------------------------------------------
-|
-| • Attachments
-| • Reactions
-| • Replies
-| • Forward Messages
-| • Voice Notes
-| • Polls
-| • Read Receipts
-| • Scheduled Messages
-| • E2EE Delivery
-|
 */
+
+/*
+|--------------------------------------------------------------------------
+| Event Names
+|--------------------------------------------------------------------------
+*/
+
+const EVENTS = {
+
+    SEND:
+
+        "message:send",
+
+    EDIT:
+
+        "message:edit",
+
+    DELETE:
+
+        "message:delete",
+
+    NEW:
+
+        "message:new",
+
+    EDITED:
+
+        "message:edited",
+
+    DELETED:
+
+        "message:deleted",
+
+    ERROR:
+
+        "socket:error"
+
+};
+
+/*
+|--------------------------------------------------------------------------
+| Helper Functions
+|--------------------------------------------------------------------------
+*/
+
+/*
+|--------------------------------------------------------------------------
+| Success ACK
+|--------------------------------------------------------------------------
+*/
+
+function ackSuccess(
+
+    callback,
+
+    data = {}
+
+) {
+
+    if (
+
+        typeof callback === "function"
+
+    ) {
+
+        callback({
+
+            success: true,
+
+            data
+
+        });
+
+    }
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Failure ACK
+|--------------------------------------------------------------------------
+*/
+
+function ackFailure(
+
+    callback,
+
+    message
+
+) {
+
+    if (
+
+        typeof callback === "function"
+
+    ) {
+
+        callback({
+
+            success: false,
+
+            message
+
+        });
+
+    }
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Emit Socket Error
+|--------------------------------------------------------------------------
+*/
+
+function emitSocketError(
+
+    socket,
+
+    event,
+
+    message
+
+) {
+
+    socket.emit(
+
+        EVENTS.ERROR,
+
+        {
+
+            event,
+
+            message
+
+        }
+
+    );
+
+}
+
 /*
 |--------------------------------------------------------------------------
 | Register Message Events
@@ -101,207 +198,19 @@ export default function registerMessageEvents(
 
     /*
     |--------------------------------------------------------------------------
-    | Join Chat
-    |--------------------------------------------------------------------------
-    |
-    | Joins the authenticated user to a chat room.
-    |
-    | Validation and membership checks are handled
-    | inside joinChatRoom().
-    |
-    */
-
-    socket.on(
-
-        "chat:join",
-
-        async (
-
-            {
-
-                chatPublicId
-
-            } = {},
-
-            callback = () => {}
-
-        ) => {
-
-            try {
-
-                if (
-
-                    !chatPublicId ||
-
-                    typeof chatPublicId !== "string"
-
-                ) {
-
-                    throw new ApiError(
-
-                        400,
-
-                        "Invalid chat."
-
-                    );
-
-                }
-
-                await joinChatRoom(
-
-                    socket,
-
-                    chatPublicId
-
-                );
-
-                callback({
-
-                    success: true
-
-                });
-
-            }
-
-            catch (error) {
-
-                callback({
-
-                    success: false,
-
-                    message: error.message
-
-                });
-
-                socket.emit(
-
-                    "socket:error",
-
-                    {
-
-                        event: "chat:join",
-
-                        message: error.message
-
-                    }
-
-                );
-
-            }
-
-        }
-
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | Leave Chat
-    |--------------------------------------------------------------------------
-    |
-    | Removes the current socket from a chat room.
-    |
-    */
-
-    socket.on(
-
-        "chat:leave",
-
-        async (
-
-            {
-
-                chatPublicId
-
-            } = {},
-
-            callback = () => {}
-
-        ) => {
-
-            try {
-
-                if (
-
-                    !chatPublicId ||
-
-                    typeof chatPublicId !== "string"
-
-                ) {
-
-                    throw new ApiError(
-
-                        400,
-
-                        "Invalid chat."
-
-                    );
-
-                }
-
-                await leaveChatRoom(
-
-                    socket,
-
-                    chatPublicId
-
-                );
-
-                callback({
-
-                    success: true
-
-                });
-
-            }
-
-            catch (error) {
-
-                callback({
-
-                    success: false,
-
-                    message: error.message
-
-                });
-
-                socket.emit(
-
-                    "socket:error",
-
-                    {
-
-                        event: "chat:leave",
-
-                        message: error.message
-
-                    }
-
-                );
-
-            }
-
-        }
-
-    );
-
-    /*
-    |--------------------------------------------------------------------------
     | Send Message
     |--------------------------------------------------------------------------
-    |
-    | Creates a new message and broadcasts it
-    | to every member inside the room.
-    |
     */
-       socket.on(
 
-        "message:send",
+    socket.on(
+
+        EVENTS.SEND,
 
         async (
 
             payload = {},
 
-            callback = () => {}
+            callback
 
         ) => {
 
@@ -339,7 +248,9 @@ export default function registerMessageEvents(
 
                 if (
 
-                    typeof text !== "string" ||
+                    typeof text !== "string"
+
+                    ||
 
                     !text.trim()
 
@@ -355,69 +266,69 @@ export default function registerMessageEvents(
 
                 }
 
-                const message =
+                const message = await saveMessage(
 
-                    await saveMessage(
+                    chatPublicId,
 
-                        chatPublicId,
+                    user.id,
 
-                        user.id,
+                    {
 
-                        {
+                        text: text.trim(),
 
-                            text: text.trim(),
+                        messageType,
 
-                            messageType,
+                        metadata
 
-                            metadata
+                    }
 
-                        }
+                );
 
-                    );
+                /*
+                ----------------------------------------------------------
+                Broadcast after successful COMMIT.
+                ----------------------------------------------------------
+                */
 
                 io.to(
 
-                    `chat:${chatPublicId}`
+                    `chat:${message.chat_public_id}`
 
                 ).emit(
 
-                    "message:new",
+                    EVENTS.NEW,
 
                     message
 
                 );
 
-                callback({
+                ackSuccess(
 
-                    success: true,
+                    callback,
 
-                    data: message
+                    message
 
-                });
+                );
 
             }
 
             catch (error) {
 
-                callback({
+                ackFailure(
 
-                    success: false,
+                    callback,
 
-                    message: error.message
+                    error.message
 
-                });
+                );
 
-                socket.emit(
+                emitSocketError(
 
-                    "socket:error",
+                    socket,
 
-                    {
+                    EVENTS.SEND,
 
-                        event: "message:send",
-
-                        message: error.message
-
-                    }
+                    error.message
 
                 );
 
@@ -426,27 +337,21 @@ export default function registerMessageEvents(
         }
 
     );
-
     /*
     |--------------------------------------------------------------------------
     | Edit Message
     |--------------------------------------------------------------------------
-    |
-    | Updates an existing message.
-    |
-    | Authorization is enforced
-    | inside the service layer.
-    |
     */
-       socket.on(
 
-        "message:edit",
+    socket.on(
+
+        EVENTS.EDIT,
 
         async (
 
             payload = {},
 
-            callback = () => {}
+            callback
 
         ) => {
 
@@ -482,7 +387,9 @@ export default function registerMessageEvents(
 
                 if (
 
-                    typeof text !== "string" ||
+                    typeof text !== "string"
+
+                    ||
 
                     !text.trim()
 
@@ -498,23 +405,27 @@ export default function registerMessageEvents(
 
                 }
 
-                const message =
+                const message = await editMessageService(
 
-                    await editMessageService(
+                    messagePublicId,
 
-                        messagePublicId,
+                    user.id,
 
-                        user.id,
+                    {
 
-                        {
+                        text: text.trim(),
 
-                            text: text.trim(),
+                        metadata
 
-                            metadata
+                    }
 
-                        }
+                );
 
-                    );
+                /*
+                ----------------------------------------------------------
+                Broadcast edited message.
+                ----------------------------------------------------------
+                */
 
                 io.to(
 
@@ -522,43 +433,39 @@ export default function registerMessageEvents(
 
                 ).emit(
 
-                    "message:edited",
+                    EVENTS.EDITED,
 
                     message
 
                 );
 
-                callback({
+                ackSuccess(
 
-                    success: true,
+                    callback,
 
-                    data: message
+                    message
 
-                });
+                );
 
             }
 
             catch (error) {
 
-                callback({
+                ackFailure(
 
-                    success: false,
+                    callback,
 
-                    message: error.message
+                    error.message
 
-                });
+                );
 
-                socket.emit(
+                emitSocketError(
 
-                    "socket:error",
+                    socket,
 
-                    {
+                    EVENTS.EDIT,
 
-                        event: "message:edit",
-
-                        message: error.message
-
-                    }
+                    error.message
 
                 );
 
@@ -572,19 +479,17 @@ export default function registerMessageEvents(
     |--------------------------------------------------------------------------
     | Delete Message
     |--------------------------------------------------------------------------
-    |
-    | Soft deletes a message.
-    |
     */
-       socket.on(
 
-        "message:delete",
+    socket.on(
+
+        EVENTS.DELETE,
 
         async (
 
             payload = {},
 
-            callback = () => {}
+            callback
 
         ) => {
 
@@ -614,15 +519,19 @@ export default function registerMessageEvents(
 
                 }
 
-                const message =
+                const message = await deleteMessageService(
 
-                    await deleteMessageService(
+                    messagePublicId,
 
-                        messagePublicId,
+                    user.id
 
-                        user.id
+                );
 
-                    );
+                /*
+                ----------------------------------------------------------
+                Broadcast deleted message.
+                ----------------------------------------------------------
+                */
 
                 io.to(
 
@@ -630,43 +539,39 @@ export default function registerMessageEvents(
 
                 ).emit(
 
-                    "message:deleted",
+                    EVENTS.DELETED,
 
                     message
 
                 );
 
-                callback({
+                ackSuccess(
 
-                    success: true,
+                    callback,
 
-                    data: message
+                    message
 
-                });
+                );
 
             }
 
             catch (error) {
 
-                callback({
+                ackFailure(
 
-                    success: false,
+                    callback,
 
-                    message: error.message
+                    error.message
 
-                });
+                );
 
-                socket.emit(
+                emitSocketError(
 
-                    "socket:error",
+                    socket,
 
-                    {
+                    EVENTS.DELETE,
 
-                        event: "message:delete",
-
-                        message: error.message
-
-                    }
+                    error.message
 
                 );
 
@@ -684,47 +589,125 @@ export default function registerMessageEvents(
 |--------------------------------------------------------------------------
 |
 | Client
-|   │
-|   ▼
+|
+|      │
+|      ▼
+|
 | message:send
 | message:edit
 | message:delete
-| chat:join
-| chat:leave
 |
-|   │
-|   ▼
+|      │
+|      ▼
+|
 | Message Service
 |
-|   │
-|   ▼
+|      │
+|      ▼
+|
 | Repository
 |
-|   │
-|   ▼
+|      │
+|      ▼
+|
 | PostgreSQL
 |
-|   │
-|   ▼
+|      │
+| COMMIT
+|      │
+|      ▼
+|
 | Socket.IO Broadcast
 |
-|   │
-|   ▼
-| Clients
+|      │
+|      ▼
+|
+| Chat Room
+|
+|      │
+|      ▼
+|
+| Every Connected Device
 |
 |--------------------------------------------------------------------------
 |
-| message.events.js
+| Future Socket Modules
+|--------------------------------------------------------------------------
+|
+| typing.events.js
+|
+| ✓ typing:start
+| ✓ typing:stop
+|
+|--------------------------------------------------------------
+|
+| read.events.js
+|
+| ✓ message:read
+| ✓ message:delivered
+|
+|--------------------------------------------------------------
+|
+| reaction.events.js
+|
+| ✓ reaction:add
+| ✓ reaction:remove
+|
+|--------------------------------------------------------------
+|
+| attachment.events.js
+|
+| ✓ attachment:upload
+| ✓ attachment:download
+|
+|--------------------------------------------------------------
+|
+| call.events.js
+|
+| ✓ call:start
+| ✓ call:offer
+| ✓ call:answer
+| ✓ call:ice
+| ✓ call:end
+|
+|--------------------------------------------------------------------------
+|
+| Design Principles
+|--------------------------------------------------------------------------
+|
+| This module ONLY:
+|
+| ✓ Receives Socket Events
+| ✓ Calls Message Service
+| ✓ Broadcasts Successful Results
+| ✓ Sends ACK Responses
+|
+| This module NEVER:
+|
+| ✗ Executes SQL
+| ✗ Starts Transactions
+| ✗ Performs Authorization
+| ✗ Implements Business Logic
+|
+|--------------------------------------------------------------------------
 |
 | Status
+|--------------------------------------------------------------------------
 |
 | ✓ Production Ready
-| ✓ Repository Driven
-| ✓ Service Driven
 | ✓ Socket.IO v4 Ready
+| ✓ Service Driven
+| ✓ Repository Driven
 | ✓ Redis Adapter Ready
+| ✓ Cluster Ready
 | ✓ Horizontal Scaling Ready
 | ✓ Multi-device Ready
+| ✓ ACK Ready
+| ✓ Future Attachments Ready
+| ✓ Future Read Receipts Ready
+| ✓ Future Typing Ready
+| ✓ Future Reactions Ready
+| ✓ Future Voice Messages Ready
 | ✓ Future E2EE Compatible
 |
 |--------------------------------------------------------------------------

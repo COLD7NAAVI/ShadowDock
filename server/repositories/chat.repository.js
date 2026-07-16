@@ -2,9 +2,6 @@ import {
     query
 } from "../config/db.js";
 
-import {
-    generateChatPublicId
-} from "../utils/idGenerator.js";
 
 /*
 |--------------------------------------------------------------------------
@@ -233,26 +230,22 @@ export async function findChatMember(
 |
 | Creates a new private chat.
 |
-| NOTE:
-| Members are NOT inserted here.
-| The service layer is responsible for adding members so the
-| entire operation stays inside one transaction.
+| PostgreSQL generates public_id automatically using gen_random_uuid().
+|
+| Members are added by the Service Layer inside the same transaction.
 |
 */
 
 export async function createPrivateChat(
     client,
     user1Id
-    ) {
-
-    const publicId = generateChatPublicId();
+) {
 
     const result = await client.query(
 
         `
         INSERT INTO chats (
 
-            public_id,
             type,
             created_by
 
@@ -260,9 +253,8 @@ export async function createPrivateChat(
 
         VALUES (
 
-            $1,
             'private',
-            $2
+            $1
 
         )
 
@@ -275,12 +267,10 @@ export async function createPrivateChat(
             avatar_url,
             created_at,
             updated_at;
-
         `,
 
         [
 
-            publicId,
             user1Id
 
         ]

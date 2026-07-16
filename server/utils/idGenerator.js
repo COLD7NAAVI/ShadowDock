@@ -6,12 +6,12 @@ import crypto from "crypto";
 |--------------------------------------------------------------------------
 |
 | URL-safe.
-| No confusing characters.
+| No ambiguous characters.
 |
 */
 
 const CHARSET =
-  "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
 /*
 |--------------------------------------------------------------------------
@@ -20,58 +20,132 @@ const CHARSET =
 */
 
 function randomString(length) {
-  const bytes = crypto.randomBytes(length);
 
-  let output = "";
+    const bytes = crypto.randomBytes(length);
 
-  for (const byte of bytes) {
-    output += CHARSET[byte % CHARSET.length];
-  }
+    let output = "";
 
-  return output;
+    for (const byte of bytes) {
+
+        output += CHARSET[
+            byte % CHARSET.length
+        ];
+
+    }
+
+    return output;
+
 }
 
 /*
 |--------------------------------------------------------------------------
-| Public ID Generator
+| Generate Secure Code
 |--------------------------------------------------------------------------
 |
-| Examples:
+| Used for:
 |
-| user_xxxxxxxxxxxxxxxx
-| chat_xxxxxxxxxxxxxxxx
-| msg_xxxxxxxxxxxxxxxx
-| att_xxxxxxxxxxxxxxxx
+| • Email verification
+| • Password reset
+| • Device pairing
+| • Backup codes
+| • Invite codes
 |
 */
-const DEFAULT_ID_LENGTH = 16;
-export function generatePublicId(
-  prefix,
-  length = DEFAULT_ID_LENGTH
+
+export function generateSecureCode(
+    length = 32
 ) {
-  return `${prefix}_${randomString(length)}`;
+
+    return randomString(length);
+
 }
 
 /*
 |--------------------------------------------------------------------------
-| Convenience Helpers
+| OTP
 |--------------------------------------------------------------------------
+|
+| Six-digit numeric code.
+|
 */
 
-export const generateUserPublicId = () =>
-  generatePublicId("user");
+export function generateOtp() {
 
-export const generateChatPublicId = () =>
-  generatePublicId("chat");
+    return crypto
+        .randomInt(
+            100000,
+            1000000
+        )
+        .toString();
 
-export const generateMessagePublicId = () =>
-  generatePublicId("msg");
+}
 
-export const generateAttachmentPublicId = () =>
-  generatePublicId("att");
+/*
+|--------------------------------------------------------------------------
+| Backup Recovery Code
+|--------------------------------------------------------------------------
+|
+| Example:
+|
+| K9X7-M4PQ
+|
+*/
 
-export const generateInvitePublicId = () =>
-  generatePublicId("invite");
+export function generateBackupCode() {
 
-export const generateNotificationPublicId = () =>
-  generatePublicId("notif");
+    return `${randomString(4)}-${randomString(4)}`;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Invite Code
+|--------------------------------------------------------------------------
+|
+| Example:
+|
+| 8HJ2QW9P
+|
+*/
+
+export function generateInviteCode() {
+
+    return randomString(8);
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Device Pairing Code
+|--------------------------------------------------------------------------
+|
+| Example:
+|
+| 4K8N2P
+|
+*/
+
+export function generatePairingCode() {
+
+    return randomString(6);
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| API Key / Secret
+|--------------------------------------------------------------------------
+|
+| Cryptographically secure hexadecimal token.
+|
+*/
+
+export function generateApiSecret(
+    bytes = 32
+) {
+
+    return crypto
+        .randomBytes(bytes)
+        .toString("hex");
+
+}
