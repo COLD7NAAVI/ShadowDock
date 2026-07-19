@@ -5,7 +5,7 @@ import Sidebar from "./components/Sidebar"
 import ChatArea from "./components/ChatArea"
 
 import chatsData from "./data/chats"
-import socket from "./services/socket"
+import useSocket from "./hooks/useSocket";
 
 import "./App.css"
 
@@ -20,7 +20,7 @@ function App() {
   const [selectedChatId, setSelectedChatId] = useState(
     chatsData[0].id
   )
-
+  const { socket } = useSocket();
   /* ---------------- SELECTED CHAT ---------------- */
 
   const selectedChat = chats.find(
@@ -165,17 +165,17 @@ function App() {
 
     /* SOCKET LISTENERS */
 
-    socket.on(
+    socket?.on(
       "receive_message",
       handleReceiveMessage
     )
 
-    socket.on(
+    socket?.on(
       "user_typing",
       handleUserTyping
     )
 
-    socket.on(
+    socket?.on(
       "user_stop_typing",
       handleUserStopTyping
     )
@@ -184,23 +184,23 @@ function App() {
 
     return () => {
 
-      socket.off(
+      socket?.off(
         "receive_message",
         handleReceiveMessage
       )
 
-      socket.off(
+      socket?.off(
         "user_typing",
         handleUserTyping
       )
 
-      socket.off(
+      socket?.off(
         "user_stop_typing",
         handleUserStopTyping
       )
     }
 
-  }, [])
+  }, [socket])
 
   /* ---------------- SEND MESSAGE ---------------- */
 
@@ -255,7 +255,7 @@ function App() {
 
     /* SOCKET SEND */
 
-    socket.emit(
+    socket?.emit(
       "send_message",
       newMessage
     )
@@ -284,7 +284,7 @@ function App() {
             onSendMessage={sendMessage}
             typingUser={typingUsers[selectedChat.id]}
             onTyping={(chatId) => {
-              socket.emit("typing", {
+              socket?.emit("typing", {
                 chat_id: chatId,
                 user: "Ghost",
                 })
@@ -292,7 +292,7 @@ function App() {
 
                 window.typingTimeout = setTimeout(() => {
 
-                  socket.emit("stop_typing", {
+                  socket?.emit("stop_typing", {
                     chat_id: chatId,
                   })
 
