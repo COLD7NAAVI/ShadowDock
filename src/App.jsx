@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import axios from "axios"
+import api from "./services/api";
 
 import Sidebar from "./components/Sidebar"
 import ChatArea from "./components/ChatArea"
@@ -35,7 +35,7 @@ function App() {
 
       try {
 
-        const response = await axios.get(
+        const response = await api.get(
           `http://localhost:5000/messages/${selectedChatId}`
         )
 

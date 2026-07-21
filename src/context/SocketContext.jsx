@@ -16,12 +16,18 @@ import socket, {
 |
 | Socket Context
 |
-| Responsibilities
+| Current Responsibilities
 |
-| ✓ Own Socket Lifecycle
-| ✓ Connect after authentication
-| ✓ Disconnect on logout
-| ✓ Provide socket instance
+| ✓ Own Socket lifecycle
+| ✓ Automatically connect
+| ✓ Automatically disconnect
+| ✓ Provide shared socket instance
+|
+| Future
+|
+| ✓ Read JWT from AuthContext
+| ✓ Connect after login
+| ✓ Disconnect after logout
 |
 |--------------------------------------------------------------------------
 */
@@ -30,23 +36,22 @@ const SocketContext = createContext(null);
 
 export function SocketProvider({
 
-    token,
-
     children
 
 }) {
 
     useEffect(() => {
 
-        if (!token) {
+        /*
+        ---------------------------------------------------------------
+        Temporary development connection.
 
-            disconnectSocket();
+        Authentication will replace this
+        in a future milestone.
+        ---------------------------------------------------------------
+        */
 
-            return;
-
-        }
-
-        connectSocket(token);
+        connectSocket();
 
         return () => {
 
@@ -54,13 +59,19 @@ export function SocketProvider({
 
         };
 
-    }, [token]);
+    }, []);
 
-    const value = useMemo(() => ({
+    const value = useMemo(
 
-        socket
+        () => ({
 
-    }), []);
+            socket
+
+        }),
+
+        []
+
+    );
 
     return (
 

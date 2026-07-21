@@ -67,21 +67,21 @@ export const socket = io(
 |--------------------------------------------------------------------------
 */
 
-export function connectSocket(token) {
+export function connectSocket(token = null) {
 
-    if (!token) {
+    if (token) {
 
-        throw new Error(
-            "Socket token is required."
-        );
+        socket.auth = {
+
+            token
+
+        };
+
+    } else {
+
+        socket.auth = {};
 
     }
-
-    socket.auth = {
-
-        token
-
-    };
 
     if (!socket.connected) {
 
