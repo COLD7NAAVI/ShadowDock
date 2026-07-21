@@ -7,7 +7,7 @@ import {
 import socket, {
     connectSocket,
     disconnectSocket
-} from "../socket/socket.js";
+} from "../services/socket.js";
 
 /*
 |--------------------------------------------------------------------------
