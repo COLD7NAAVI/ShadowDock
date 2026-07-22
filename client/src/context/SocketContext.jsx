@@ -4,9 +4,12 @@ import {
     useMemo
 } from "react";
 
-import socket, {
+import {
+
     connectSocket,
-    disconnectSocket
+    disconnectSocket,
+    getSocket
+
 } from "../services/socket.js";
 
 /*
@@ -40,32 +43,12 @@ export function SocketProvider({
 
 }) {
 
-    useEffect(() => {
-
-        /*
-        ---------------------------------------------------------------
-        Temporary development connection.
-
-        Authentication will replace this
-        in a future milestone.
-        ---------------------------------------------------------------
-        */
-
-        connectSocket();
-
-        return () => {
-
-            disconnectSocket();
-
-        };
-
-    }, []);
-
+    
     const value = useMemo(
 
         () => ({
 
-            socket
+            socket: getSocket(),
 
         }),
 

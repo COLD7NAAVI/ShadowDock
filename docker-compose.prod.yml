@@ -1,0 +1,59 @@
+services:
+
+  server:
+
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      target: production
+
+    container_name: shadowdock-server
+
+    env_file:
+      - ./server/.env
+
+    environment:
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      NODE_ENV: production
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    expose:
+      - "5000"
+
+    restart: unless-stopped
+
+    networks:
+      - backend
+      - frontend
+
+  client:
+
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+      target: production
+
+    container_name: shadowdock-client
+
+    depends_on:
+      - server
+
+    ports:
+      - "80:80"
+
+    restart: unless-stopped
+
+    read_only: true
+
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+
+    networks:
+      - frontend

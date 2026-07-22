@@ -1,0 +1,33 @@
+services:
+
+  server:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+
+    restart: unless-stopped
+
+    env_file:
+      - ../server/.env
+
+    environment:
+      DB_HOST: postgres
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  client:
+    build:
+      context: ../client
+      dockerfile: Dockerfile
+
+    restart: unless-stopped
+
+    depends_on:
+      - server
+
+  redis:
+    image: redis:8-alpine
+
+    restart: unless-stopped

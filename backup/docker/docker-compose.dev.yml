@@ -1,0 +1,56 @@
+services:
+
+  server:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+
+    container_name: shadowdock-server
+
+    restart: unless-stopped
+
+    env_file:
+      - ../server/.env
+
+    environment:
+      DB_HOST: postgres
+
+    ports:
+      - "5000:5000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    volumes:
+      - ../server:/app
+      - /app/node_modules
+
+  client:
+    build:
+      context: ../client
+      dockerfile: Dockerfile
+
+    container_name: shadowdock-client
+
+    restart: unless-stopped
+
+    ports:
+      - "5173:5173"
+
+    depends_on:
+      - server
+
+    volumes:
+      - ../client:/app
+      - /app/node_modules
+
+  redis:
+    image: redis:8-alpine
+
+    container_name: shadowdock-redis
+
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
