@@ -11,141 +11,99 @@ import crypto from "crypto";
 */
 
 const CHARSET =
-    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
 /*
 |--------------------------------------------------------------------------
-| Generate Random String
+| Random String
 |--------------------------------------------------------------------------
 */
 
 function randomString(length) {
+  const bytes = crypto.randomBytes(length);
 
-    const bytes = crypto.randomBytes(length);
+  let output = "";
 
-    let output = "";
+  for (const byte of bytes) {
+    output += CHARSET[byte % CHARSET.length];
+  }
 
-    for (const byte of bytes) {
-
-        output += CHARSET[
-            byte % CHARSET.length
-        ];
-
-    }
-
-    return output;
-
+  return output;
 }
 
 /*
 |--------------------------------------------------------------------------
-| Generate Secure Code
+| Public ID Generator
 |--------------------------------------------------------------------------
 |
-| Used for:
+| Examples
 |
-| • Email verification
-| • Password reset
-| • Device pairing
-| • Backup codes
-| • Invite codes
+| usr_A81KD29F
+| chat_P82KSL92
+| msg_H92KDJ2A
 |
 */
 
-export function generateSecureCode(
-    length = 32
-) {
+export function generatePublicId(prefix) {
+  return `${prefix}_${randomString(8)}`;
+}
 
-    return randomString(length);
+/*
+|--------------------------------------------------------------------------
+| Secure Random Code
+|--------------------------------------------------------------------------
+*/
 
+export function generateSecureCode(length = 32) {
+  return randomString(length);
 }
 
 /*
 |--------------------------------------------------------------------------
 | OTP
 |--------------------------------------------------------------------------
-|
-| Six-digit numeric code.
-|
 */
 
 export function generateOtp() {
-
-    return crypto
-        .randomInt(
-            100000,
-            1000000
-        )
-        .toString();
-
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 /*
 |--------------------------------------------------------------------------
 | Backup Recovery Code
 |--------------------------------------------------------------------------
-|
-| Example:
-|
-| K9X7-M4PQ
-|
 */
 
 export function generateBackupCode() {
-
-    return `${randomString(4)}-${randomString(4)}`;
-
+  return `${randomString(4)}-${randomString(4)}`;
 }
 
 /*
 |--------------------------------------------------------------------------
 | Invite Code
 |--------------------------------------------------------------------------
-|
-| Example:
-|
-| 8HJ2QW9P
-|
 */
 
 export function generateInviteCode() {
-
-    return randomString(8);
-
+  return randomString(8);
 }
 
 /*
 |--------------------------------------------------------------------------
 | Device Pairing Code
 |--------------------------------------------------------------------------
-|
-| Example:
-|
-| 4K8N2P
-|
 */
 
 export function generatePairingCode() {
-
-    return randomString(6);
-
+  return randomString(6);
 }
 
 /*
 |--------------------------------------------------------------------------
-| API Key / Secret
+| API Secret
 |--------------------------------------------------------------------------
-|
-| Cryptographically secure hexadecimal token.
-|
 */
 
-export function generateApiSecret(
-    bytes = 32
-) {
-
-    return crypto
-        .randomBytes(bytes)
-        .toString("hex");
-
+export function generateApiSecret(bytes = 32) {
+  return crypto.randomBytes(bytes).toString("hex");
 }
