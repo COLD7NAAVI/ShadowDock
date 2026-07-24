@@ -32,15 +32,15 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 \echo ''
 \echo 'Installing helper functions...'
 
-\i functions/helpers.sql
+\ir functions/helpers.sql
 
 \echo 'Installing public ID generator...'
 
-\i functions/generate_public_id.sql
+\ir functions/generate_public_id.sql
 
 \echo 'Installing timestamp function...'
 
-\i functions/update_timestamp.sql
+\ir functions/update_timestamp.sql
 
 -- ================================================================
 -- Core Database Migrations
@@ -53,54 +53,55 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Users
 ------------------------------------------------------------
 
-\i migrations/001_create_users.sql
+\ir migrations/001_create_users.sql
 
 ------------------------------------------------------------
 -- Devices
 ------------------------------------------------------------
 
-\i migrations/002_create_devices.sql
+\ir migrations/002_create_devices.sql
 
 ------------------------------------------------------------
 -- Sessions
 ------------------------------------------------------------
 
-\i migrations/003_create_sessions.sql
+\ir migrations/003_create_sessions.sql
 
 ------------------------------------------------------------
 -- Chats
 ------------------------------------------------------------
 
-\i migrations/004_create_chats.sql
+\ir migrations/004_create_chats.sql
 
 ------------------------------------------------------------
 -- Chat Members
 ------------------------------------------------------------
 
-\i migrations/005_create_chat_members.sql
+\ir migrations/005_create_chat_members.sql
+
 ------------------------------------------------------------
 -- Messages
 ------------------------------------------------------------
 
-\i migrations/006_create_messages.sql
+\ir migrations/006_create_messages.sql
 
 ------------------------------------------------------------
 -- Attachments
 ------------------------------------------------------------
 
-\i migrations/007_create_attachments.sql
+\ir migrations/007_create_attachments.sql
 
 ------------------------------------------------------------
 -- Reactions
 ------------------------------------------------------------
 
-\i migrations/008_create_reactions.sql
+\ir migrations/008_create_reactions.sql
 
 ------------------------------------------------------------
 -- Notifications
 ------------------------------------------------------------
 
-\i migrations/009_create_notifications.sql
+\ir migrations/009_create_notifications.sql
 
 -- ================================================================
 -- Install Update Triggers
@@ -109,7 +110,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 \echo ''
 \echo 'Creating automatic timestamp triggers...'
 
-\i triggers/update_timestamp_trigger.sql
+\ir triggers/update_timestamp_trigger.sql
 
 -- ================================================================
 -- Verification
@@ -160,6 +161,7 @@ BEGIN
 
 END;
 $$;
+
 -- ================================================================
 -- Installation Summary
 -- ================================================================

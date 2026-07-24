@@ -1,7 +1,5 @@
 import { query } from "../config/db.js";
 
-
-
 /*
 |--------------------------------------------------------------------------
 | ShadowDock Messenger
@@ -20,14 +18,7 @@ import { query } from "../config/db.js";
 | ✓ Updates
 | ✓ Soft Deletes
 |
-| This repository NEVER contains:
-|
-| ✗ Business Logic
-| ✗ Authorization
-| ✗ Validation
-| ✗ Transactions
-|
-| Those belong to the Service Layer.
+| Business logic belongs to the Service Layer.
 |
 |--------------------------------------------------------------------------
 */
@@ -37,37 +28,110 @@ import { query } from "../config/db.js";
 | Shared Column Definitions
 |--------------------------------------------------------------------------
 |
-| Keeps every query returning the same message structure.
-| Makes future schema changes significantly easier.
+| Every query returns the same message structure.
 |
 */
 
 const MESSAGE_COLUMNS = `
     m.id,
     m.public_id,
+
     m.chat_id,
     m.sender_id,
-    m.text,
+
+    m.sender_public_id,
+    
+
     m.message_type,
+
+    m.content,
+
+    m.reply_to_message_id,
+    m.forwarded_from_message_id,
+
+    m.edited,
+
     m.metadata,
-    m.is_edited,
-    m.is_deleted,
+
     m.created_at,
-    m.updated_at
+    m.updated_at,
+    m.deleted_at,
+    m.thread_root_message_id,
+    m.delivery_status,
+    m.edited_at,
+    m.pinned,
+    m.pinned_at,
+    m.reaction_count,
+    m.reply_count,
+    m.forward_count,
+    m.view_count,
+    m.generator_type,
+    m.encrypted
 `;
 
 const MESSAGE_WITH_CHAT_COLUMNS = `
     ${MESSAGE_COLUMNS},
+
     c.public_id AS chat_public_id
 `;
 
 /*
 |--------------------------------------------------------------------------
-| Find Message By Public ID
+| Find Message By Internal ID
 |--------------------------------------------------------------------------
+|
+| Internal service lookup.
+|
 */
 
-export async function findMessageByPublicId(publicId) {
+export async function findMessageById(
+    messageId
+) {
+
+    const result = await query(
+
+        `
+        SELECT
+
+            ${MESSAGE_WITH_CHAT_COLUMNS}
+
+        FROM messages m
+
+        INNER JOIN chats c
+
+            ON c.id = m.chat_id
+
+        WHERE
+
+            m.id = $1
+
+        LIMIT 1;
+        `,
+
+        [
+
+            messageId
+
+        ]
+
+    );
+
+    return result.rows[0] ?? null;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Find Message By Public ID
+|--------------------------------------------------------------------------
+|
+| Returns one message.
+|
+*/
+
+export async function findMessageByPublicId(
+    publicId
+) {
 
     const result = await query(
 
@@ -89,7 +153,11 @@ export async function findMessageByPublicId(publicId) {
         LIMIT 1;
         `,
 
-        [publicId]
+        [
+
+            publicId
+
+        ]
 
     );
 
@@ -99,10 +167,77 @@ export async function findMessageByPublicId(publicId) {
 
 /*
 |--------------------------------------------------------------------------
+| Find Messages By Public IDs
+|--------------------------------------------------------------------------
+|
+| Bulk lookup.
+|
+| Future Uses
+|
+| • Bulk Delete
+| • Forward Messages
+| • Export Chats
+| • AI Processing
+|
+*/
+
+export async function findMessagesByPublicIds(
+    publicIds = []
+) {
+
+    if (
+
+        !Array.isArray(publicIds)
+
+        ||
+
+        publicIds.length === 0
+
+    ) {
+
+        return [];
+
+    }
+
+    const result = await query(
+
+        `
+        SELECT
+
+            ${MESSAGE_WITH_CHAT_COLUMNS}
+
+        FROM messages m
+
+        INNER JOIN chats c
+
+            ON c.id = m.chat_id
+
+        WHERE
+
+            m.public_id = ANY($1)
+
+        ORDER BY
+
+            m.created_at ASC;
+        `,
+
+        [
+
+            publicIds
+
+        ]
+
+    );
+
+    return result.rows;
+
+}
+/*
+|--------------------------------------------------------------------------
 | Create Message
 |--------------------------------------------------------------------------
 |
-| PostgreSQL automatically generates message public_id.
+| Creates a new message.
 |
 | Must execute inside an active transaction.
 |
@@ -115,10 +250,40 @@ export async function createMessage(
     {
 
         chatId,
+
         senderId,
-        text,
+
+        senderPublicId,
+
+        content,
+
         messageType = "text",
-        metadata = {}
+
+        metadata = {},
+
+        replyToMessageId = null,
+
+        threadRootMessageId = null,
+
+        forwardedFromMessageId = null,
+
+        forwardedFromChatId = null,
+
+        forwardedFromUserId = null,
+
+        scheduledAt = null,
+
+        expiresAt = null,
+
+        encrypted = false,
+
+        encryptionVersion = null,
+
+        messageNonce = null,
+
+        encryptedKey = null,
+
+        encryptionAlgorithm = null
 
     }
 
@@ -127,63 +292,130 @@ export async function createMessage(
     const result = await client.query(
 
         `
-        WITH inserted AS (
+        INSERT INTO messages (
 
-            INSERT INTO messages (
+            chat_id,
 
-                chat_id,
-                sender_id,
-                text,
-                message_type,
-                metadata
+            sender_id,
 
-            )
+            sender_public_id,
 
-            VALUES (
+            content,
 
-                $1,
-                $2,
-                $3,
-                $4,
-                $5
+            message_type,
 
-            )
+            metadata,
 
-            RETURNING *
+            reply_to_message_id,
+
+            thread_root_message_id,
+
+            forwarded_from_message_id,
+
+            forwarded_from_chat_id,
+
+            forwarded_from_user_id,
+
+            scheduled_at,
+
+            expires_at,
+
+            encrypted,
+
+            encryption_version,
+
+            message_nonce,
+
+            encrypted_key,
+
+            encryption_algorithm,
+
+            created_by
 
         )
 
-        SELECT
+        VALUES (
 
-            inserted.id,
-            inserted.public_id,
-            inserted.chat_id,
-            inserted.sender_id,
-            inserted.text,
-            inserted.message_type,
-            inserted.metadata,
-            inserted.is_edited,
-            inserted.is_deleted,
-            inserted.created_at,
-            inserted.updated_at,
+            $1,
 
-            chats.public_id
-                AS chat_public_id
+            $2,
 
-        FROM inserted
+            $3,
 
-        INNER JOIN chats
+            $4,
 
-            ON chats.id = inserted.chat_id;
+            $5,
+
+            $6,
+
+            $7,
+
+            $8,
+
+            $9,
+
+            $10,
+
+            $11,
+
+            $12,
+
+            $13,
+
+            $14,
+
+            $15,
+
+            $16,
+
+            $17,
+
+            $18,
+
+            $2
+
+        )
+
+        RETURNING *;
         `,
 
         [
 
             chatId,
+
             senderId,
-            text,
+
+            senderPublicId,
+
+            content,
+
             messageType,
-            metadata
+
+            metadata,
+
+            replyToMessageId,
+
+            threadRootMessageId,
+
+            forwardedFromMessageId,
+
+            forwardedFromChatId,
+
+            forwardedFromUserId,
+
+            scheduledAt,
+
+            expiresAt,
+
+            encrypted,
+
+            encryptionVersion,
+
+            messageNonce,
+
+            encryptedKey,
+
+            encryptionAlgorithm
 
         ]
 
@@ -195,18 +427,222 @@ export async function createMessage(
 
 /*
 |--------------------------------------------------------------------------
+| Update Message
+|--------------------------------------------------------------------------
+|
+| Edit an existing message.
+|
+*/
+
+export async function updateMessage(
+
+    client,
+
+    {
+
+        messageId,
+
+        content,
+
+        metadata,
+
+        editorId
+
+    }
+
+) {
+
+    const result = await client.query(
+
+        `
+        UPDATE messages
+
+        SET
+
+            content = $1,
+
+            metadata = $2,
+
+            edited = TRUE,
+
+            edit_count = edit_count + 1,
+
+            edited_at = NOW(),
+
+            last_editor_id = $3,
+
+            updated_by = $3,
+
+            updated_at = NOW()
+
+        WHERE
+
+            id = $4
+
+        RETURNING *;
+        `,
+
+        [
+
+            content,
+
+            metadata,
+
+            editorId,
+
+            messageId
+
+        ]
+
+    );
+
+    return result.rows[0] ?? null;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Soft Delete Message
+|--------------------------------------------------------------------------
+|
+| Preserves history.
+|
+*/
+
+export async function softDeleteMessage(
+
+    client,
+
+    {
+
+        messageId,
+
+        deletedBy,
+
+        deleteForEveryone = false
+
+    }
+
+) {
+
+    const result = await client.query(
+
+        `
+        UPDATE messages
+
+        SET
+
+            deleted_at = NOW(),
+
+            deleted_by = $1,
+
+            deleted_for_everyone = $2,
+
+            updated_by = $1,
+
+            updated_at = NOW()
+
+        WHERE
+
+            id = $3
+
+        RETURNING *;
+        `,
+
+        [
+
+            deletedBy,
+
+            deleteForEveryone,
+
+            messageId
+
+        ]
+
+    );
+
+    return result.rows[0] ?? null;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Restore Message
+|--------------------------------------------------------------------------
+|
+|
+| Future moderation support.
+|
+*/
+
+export async function restoreMessage(
+
+    client,
+
+    {
+
+        messageId,
+
+        restoredBy
+
+    }
+
+) {
+
+    const result = await client.query(
+
+        `
+        UPDATE messages
+
+        SET
+
+            deleted_at = NULL,
+
+            deleted_by = NULL,
+
+            restored_at = NOW(),
+
+            restored_by = $1,
+
+            updated_by = $1,
+
+            updated_at = NOW()
+
+        WHERE
+
+            id = $2
+
+        RETURNING *;
+        `,
+
+        [
+
+            restoredBy,
+
+            messageId
+
+        ]
+
+    );
+
+    return result.rows[0] ?? null;
+
+}
+/*
+|--------------------------------------------------------------------------
 | Get Chat Messages
 |--------------------------------------------------------------------------
 |
-| Returns chronological messages.
+| Returns messages for a chat.
 |
-| Supports
+| Features
 |
 | ✓ Infinite Scroll
-| ✓ Sender Information
-| ✓ Future Replies
-| ✓ Future Attachments
-| ✓ Future Reactions
+| ✓ Cursor Pagination
+| ✓ Reply Ready
+| ✓ Thread Ready
+| ✓ Attachment Ready
+| ✓ Reaction Ready
 |
 */
 
@@ -230,32 +666,22 @@ export async function getChatMessages(
             ${MESSAGE_COLUMNS},
 
             --------------------------------------------------
-            -- Sender
+            -- Chat
             --------------------------------------------------
 
-            u.public_id
-                AS sender_public_id,
+            c.public_id
+                AS chat_public_id,
+
+            --------------------------------------------------
+            -- Sender
+            --------------------------------------------------
 
             u.username,
 
             u.display_name,
 
-            u.avatar_url
-                AS sender_avatar,
-
-            --------------------------------------------------
-            -- Sender Role
-            --------------------------------------------------
-
-            member.role
-                AS sender_role,
-
-            --------------------------------------------------
-            -- Chat
-            --------------------------------------------------
-
-            c.public_id
-                AS chat_public_id
+            u.photo
+                AS sender_photo
 
         FROM messages m
 
@@ -266,26 +692,6 @@ export async function getChatMessages(
         INNER JOIN users u
 
             ON u.id = m.sender_id
-
-        INNER JOIN LATERAL (
-
-            SELECT role
-
-            FROM chat_members
-
-            WHERE
-
-                chat_id = c.id
-
-            AND
-
-                user_id = m.sender_id
-
-            LIMIT 1
-
-        ) member
-
-            ON TRUE
 
         WHERE
 
@@ -307,7 +713,19 @@ export async function getChatMessages(
 
                     cm.user_id = $2
 
+                AND
+
+                    cm.left_at IS NULL
+
+                AND
+
+                    cm.banned_at IS NULL
+
             )
+
+        AND
+
+            m.deleted_at IS NULL
 
         AND (
 
@@ -349,459 +767,16 @@ export async function getChatMessages(
     return result.rows.reverse();
 
 }
-/*
-|--------------------------------------------------------------------------
-| Update Message
-|--------------------------------------------------------------------------
-|
-| Updates an existing message.
-|
-| IMPORTANT
-|
-| • Must execute inside an active transaction.
-| • Authorization belongs to the Service layer.
-| • Returns chat_public_id for realtime broadcasts.
-|
-*/
-
-export async function updateMessage(
-
-    client,
-
-    {
-        messageId,
-        text,
-        metadata = {}
-    }
-
-) {
-
-    const result = await client.query(
-
-        `
-        WITH updated AS (
-
-            UPDATE messages
-
-            SET
-
-                text = $1,
-
-                metadata = $2,
-
-                is_edited = TRUE,
-
-                updated_at = NOW()
-
-            WHERE
-
-                id = $3
-
-            RETURNING *
-
-        )
-
-        SELECT
-
-            updated.id,
-            updated.public_id,
-            updated.chat_id,
-            updated.sender_id,
-            updated.text,
-            updated.message_type,
-            updated.metadata,
-            updated.is_edited,
-            updated.is_deleted,
-            updated.created_at,
-            updated.updated_at,
-
-            chats.public_id
-                AS chat_public_id
-
-        FROM updated
-
-        INNER JOIN chats
-
-            ON chats.id = updated.chat_id;
-        `,
-
-        [
-
-            text,
-            metadata,
-            messageId
-
-        ]
-
-    );
-
-    return result.rows[0] ?? null;
-
-}
-
-/*
-|--------------------------------------------------------------------------
-| Soft Delete Message
-|--------------------------------------------------------------------------
-|
-| Preserves conversation history while hiding content.
-|
-| Returns chat_public_id for Socket.IO broadcasting.
-|
-*/
-
-export async function softDeleteMessage(
-
-    client,
-
-    messageId
-
-) {
-
-    const result = await client.query(
-
-        `
-        WITH deleted AS (
-
-            UPDATE messages
-
-            SET
-
-                text = NULL,
-
-                metadata = '{}'::jsonb,
-
-                is_deleted = TRUE,
-
-                updated_at = NOW()
-
-            WHERE
-
-                id = $1
-
-            RETURNING *
-
-        )
-
-        SELECT
-
-            deleted.id,
-            deleted.public_id,
-            deleted.chat_id,
-            deleted.sender_id,
-            deleted.text,
-            deleted.message_type,
-            deleted.metadata,
-            deleted.is_edited,
-            deleted.is_deleted,
-            deleted.created_at,
-            deleted.updated_at,
-
-            chats.public_id
-                AS chat_public_id
-
-        FROM deleted
-
-        INNER JOIN chats
-
-            ON chats.id = deleted.chat_id;
-        `,
-
-        [
-
-            messageId
-
-        ]
-
-    );
-
-    return result.rows[0] ?? null;
-
-}
-
-/*
-|--------------------------------------------------------------------------
-| Get Latest Chat Message
-|--------------------------------------------------------------------------
-|
-| Used for:
-|
-| ✓ Chat Sidebar
-| ✓ Conversation Preview
-| ✓ Push Notifications
-| ✓ Last Activity
-|
-*/
-
-export async function getLatestChatMessage(
-
-    chatId
-
-) {
-
-    const result = await query(
-
-        `
-        SELECT
-
-            m.public_id,
-
-            c.public_id
-                AS chat_public_id,
-
-            m.sender_id,
-
-            m.text,
-
-            m.message_type,
-
-            m.created_at,
-
-            m.is_edited,
-
-            m.is_deleted
-
-        FROM messages m
-
-        INNER JOIN chats c
-
-            ON c.id = m.chat_id
-
-        WHERE
-
-            m.chat_id = $1
-
-        AND
-
-            m.is_deleted = FALSE
-
-        ORDER BY
-
-            m.created_at DESC
-
-        LIMIT 1;
-        `,
-
-        [
-
-            chatId
-
-        ]
-
-    );
-
-    return result.rows[0] ?? null;
-
-}
-
-/*
-|--------------------------------------------------------------------------
-| Count Chat Messages
-|--------------------------------------------------------------------------
-|
-| Counts visible (non-deleted) messages.
-|
-| Used for:
-|
-| ✓ Pagination
-| ✓ Chat Statistics
-| ✓ Admin Dashboard
-| ✓ Analytics
-|
-*/
-
-export async function countChatMessages(
-
-    chatId
-
-) {
-
-    const result = await query(
-
-        `
-        SELECT
-
-            COUNT(*)::INTEGER
-                AS total
-
-        FROM messages
-
-        WHERE
-
-            chat_id = $1
-
-        AND
-
-            is_deleted = FALSE;
-        `,
-
-        [
-
-            chatId
-
-        ]
-
-    );
-
-    return result.rows[0].total;
-
-}
-/*
-|--------------------------------------------------------------------------
-| Count Unread Messages
-|--------------------------------------------------------------------------
-|
-| Returns unread message count.
-|
-| NOTE
-|
-| This query assumes the future existence of:
-|
-| message_reads
-|
-| It intentionally remains here so that introducing
-| read receipts later requires zero repository changes.
-|
-*/
-
-export async function countUnreadMessages(
-
-    chatId,
-
-    userId
-
-) {
-
-    const result = await query(
-
-        `
-        SELECT
-
-            COUNT(*)::INTEGER
-                AS unread_count
-
-        FROM messages m
-
-        WHERE
-
-            m.chat_id = $1
-
-        AND
-
-            m.sender_id <> $2
-
-        AND
-
-            m.is_deleted = FALSE
-
-        AND NOT EXISTS (
-
-            SELECT 1
-
-            FROM message_reads mr
-
-            WHERE
-
-                mr.message_id = m.id
-
-            AND
-
-                mr.user_id = $2
-
-        );
-        `,
-
-        [
-
-            chatId,
-
-            userId
-
-        ]
-
-    );
-
-    return result.rows[0]?.unread_count ?? 0;
-
-}
-
-/*
-|--------------------------------------------------------------------------
-| Find Messages By Public IDs
-|--------------------------------------------------------------------------
-|
-| Bulk lookup.
-|
-| Future Uses
-|
-| ✓ Forward Messages
-| ✓ Bulk Delete
-| ✓ Bulk Reactions
-| ✓ Export Chats
-| ✓ AI Processing
-|
-*/
-
-export async function findMessagesByPublicIds(
-
-    publicIds = []
-
-) {
-
-    if (
-
-        !Array.isArray(publicIds)
-
-        ||
-
-        publicIds.length === 0
-
-    ) {
-
-        return [];
-
-    }
-
-    const result = await query(
-
-        `
-        SELECT
-
-            ${MESSAGE_WITH_CHAT_COLUMNS}
-
-        FROM messages m
-
-        INNER JOIN chats c
-
-            ON c.id = m.chat_id
-
-        WHERE
-
-            m.public_id = ANY($1);
-        `,
-
-        [
-
-            publicIds
-
-        ]
-
-    );
-
-    return result.rows;
-
-}
 
 /*
 |--------------------------------------------------------------------------
 | Get Messages After Timestamp
 |--------------------------------------------------------------------------
 |
-| Used For
+| Used for:
 |
 | ✓ Offline Sync
 | ✓ Multi-device Sync
-| ✓ Incremental Synchronization
 | ✓ Reconnect Recovery
 |
 */
@@ -835,6 +810,10 @@ export async function getMessagesAfter(
 
             m.created_at > $2
 
+        AND
+
+            m.deleted_at IS NULL
+
         ORDER BY
 
             m.created_at ASC;
@@ -856,41 +835,606 @@ export async function getMessagesAfter(
 
 /*
 |--------------------------------------------------------------------------
+| Get Latest Chat Message
+|--------------------------------------------------------------------------
+|
+| Used by:
+|
+| ✓ Chat Sidebar
+| ✓ Conversation Preview
+| ✓ Push Notifications
+| ✓ Last Activity
+|
+*/
+
+export async function getLatestChatMessage(
+
+    chatId
+
+) {
+
+    const result = await query(
+
+        `
+        SELECT
+
+            ${MESSAGE_WITH_CHAT_COLUMNS}
+
+        FROM messages m
+
+        INNER JOIN chats c
+
+            ON c.id = m.chat_id
+
+        WHERE
+
+            m.chat_id = $1
+
+        AND
+
+            m.deleted_at IS NULL
+
+        ORDER BY
+
+            m.created_at DESC
+
+        LIMIT 1;
+        `,
+
+        [
+
+            chatId
+
+        ]
+
+    );
+
+    return result.rows[0] ?? null;
+
+}
+/*
+|--------------------------------------------------------------------------
+| Count Chat Messages
+|--------------------------------------------------------------------------
+|
+| Counts visible messages.
+|
+*/
+
+export async function countChatMessages(
+
+    chatId
+
+) {
+
+    const result = await query(
+
+        `
+        SELECT
+
+            COUNT(*)::INTEGER AS total
+
+        FROM messages
+
+        WHERE
+
+            chat_id = $1
+
+        AND
+
+            deleted_at IS NULL;
+        `,
+
+        [
+
+            chatId
+
+        ]
+
+    );
+
+    return result.rows[0].total;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Count Unread Messages
+|--------------------------------------------------------------------------
+|
+| Uses chat_members.last_read_message_id.
+|
+| No message_reads table required.
+|
+*/
+
+export async function countUnreadMessages(
+
+    chatId,
+
+    userId
+
+) {
+
+    const result = await query(
+
+        `
+        WITH last_read AS (
+
+            SELECT
+
+                last_read_message_id
+
+            FROM chat_members
+
+            WHERE
+
+                chat_id = $1
+
+            AND
+
+                user_id = $2
+
+            LIMIT 1
+
+        )
+
+        SELECT
+
+            COUNT(*)::INTEGER AS unread_count
+
+        FROM messages m
+
+        LEFT JOIN last_read lr
+
+            ON TRUE
+
+        WHERE
+
+            m.chat_id = $1
+
+        AND
+
+            m.sender_id <> $2
+
+        AND
+
+            m.deleted_at IS NULL
+
+        AND (
+
+                lr.last_read_message_id IS NULL
+
+                OR
+
+                m.created_at >
+
+                COALESCE(
+
+                    (
+
+                        SELECT created_at
+
+                        FROM messages
+
+                        WHERE id = lr.last_read_message_id
+
+                    ),
+
+                    '-infinity'::timestamptz
+
+                )
+
+        );
+        `,
+
+        [
+
+            chatId,
+
+            userId
+
+        ]
+
+    );
+
+    return result.rows[0]?.unread_count ?? 0;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Search Messages
+|--------------------------------------------------------------------------
+|
+| Uses PostgreSQL Full Text Search.
+|
+| Powered by:
+|
+| idx_messages_content_search
+|
+*/
+
+export async function searchMessages(
+
+    chatId,
+
+    searchText,
+
+    limit = 50
+
+) {
+
+    const result = await query(
+
+        `
+        SELECT
+
+            ${MESSAGE_WITH_CHAT_COLUMNS}
+
+        FROM messages m
+
+        INNER JOIN chats c
+
+            ON c.id = m.chat_id
+
+        WHERE
+
+            m.chat_id = $1
+
+        AND
+
+            m.deleted_at IS NULL
+
+        AND
+
+            to_tsvector(
+
+                'simple',
+
+                COALESCE(
+
+                    m.content,
+
+                    ''
+
+                )
+
+            )
+
+            @@
+
+            plainto_tsquery(
+
+                'simple',
+
+                $2
+
+            )
+
+        ORDER BY
+
+            ts_rank(
+
+                to_tsvector(
+
+                    'simple',
+
+                    COALESCE(
+
+                        m.content,
+
+                        ''
+
+                    )
+
+                ),
+
+                plainto_tsquery(
+
+                    'simple',
+
+                    $2
+
+                )
+
+            ) DESC,
+
+            m.created_at DESC
+
+        LIMIT $3;
+        `,
+
+        [
+
+            chatId,
+
+            searchText,
+
+            limit
+
+        ]
+
+    );
+
+    return result.rows;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Find Replies
+|--------------------------------------------------------------------------
+|
+| Returns direct replies to a message.
+|
+*/
+
+export async function findReplies(
+
+    messageId
+
+) {
+
+    const result = await query(
+
+        `
+        SELECT
+
+            ${MESSAGE_WITH_CHAT_COLUMNS}
+
+        FROM messages m
+
+        INNER JOIN chats c
+
+            ON c.id = m.chat_id
+
+        WHERE
+
+            m.reply_to_message_id = $1
+
+        AND
+
+            m.deleted_at IS NULL
+
+        ORDER BY
+
+            m.created_at ASC;
+        `,
+
+        [
+
+            messageId
+
+        ]
+
+    );
+
+    return result.rows;
+
+}
+/*
+|--------------------------------------------------------------------------
+| Pin Message
+|--------------------------------------------------------------------------
+|
+| Pins a message inside a chat.
+|
+*/
+
+export async function pinMessage(
+
+    client,
+
+    {
+
+        messageId,
+
+        pinnedBy
+
+    }
+
+) {
+
+    const result = await client.query(
+
+        `
+        UPDATE messages
+
+        SET
+
+            pinned = TRUE,
+
+            pinned_at = NOW(),
+
+            pinned_by = $1,
+
+            updated_by = $1,
+
+            updated_at = NOW()
+
+        WHERE
+
+            id = $2
+
+        RETURNING *;
+        `,
+
+        [
+
+            pinnedBy,
+
+            messageId
+
+        ]
+
+    );
+
+    return result.rows[0] ?? null;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Unpin Message
+|--------------------------------------------------------------------------
+|
+| Removes a pinned message.
+|
+*/
+
+export async function unpinMessage(
+
+    client,
+
+    messageId
+
+) {
+
+    const result = await client.query(
+
+        `
+        UPDATE messages
+
+        SET
+
+            pinned = FALSE,
+
+            pinned_at = NULL,
+
+            pinned_by = NULL,
+
+            updated_at = NOW()
+
+        WHERE
+
+            id = $1
+
+        RETURNING *;
+        `,
+
+        [
+
+            messageId
+
+        ]
+
+    );
+
+    return result.rows[0] ?? null;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Update Message Counters
+|--------------------------------------------------------------------------
+|
+| Keeps cached statistics synchronized.
+|
+| Called after:
+|
+| • Add Reaction
+| • Remove Reaction
+| • Add Reply
+| • Forward Message
+|
+*/
+
+export async function updateMessageCounters(
+
+    client,
+
+    messageId
+
+) {
+
+    await client.query(
+
+        `
+        UPDATE messages
+
+        SET
+
+            reaction_count = (
+
+                SELECT COUNT(*)
+
+                FROM reactions
+
+                WHERE
+
+                    message_id = $1
+
+                    AND deleted_at IS NULL
+
+            ),
+
+            reply_count = (
+
+                SELECT COUNT(*)
+
+                FROM messages
+
+                WHERE
+
+                    reply_to_message_id = $1
+
+                    AND deleted_at IS NULL
+
+            ),
+
+            forward_count = (
+
+                SELECT COUNT(*)
+
+                FROM messages
+
+                WHERE
+
+                    forwarded_from_message_id = $1
+
+                    AND deleted_at IS NULL
+
+            ),
+
+            updated_at = NOW()
+
+        WHERE
+
+            id = $1;
+        `,
+
+        [
+
+            messageId
+
+        ]
+
+    );
+
+}
+
+/*
+|--------------------------------------------------------------------------
 | Repository Summary
 |--------------------------------------------------------------------------
 |
 | Responsibilities
 |
 | ✓ SQL Only
-| ✓ Message Persistence
-| ✓ Retrieval
-| ✓ Pagination
-| ✓ Edit
+| ✓ CRUD Operations
+| ✓ Timeline Queries
+| ✓ Cursor Pagination
+| ✓ Full-Text Search
+| ✓ Message Editing
 | ✓ Soft Delete
-| ✓ Latest Message
+| ✓ Restore
+| ✓ Pin / Unpin
+| ✓ Reply Lookup
+| ✓ Offline Synchronization
 | ✓ Statistics
-| ✓ Incremental Sync
-| ✓ Bulk Operations
-|
-|--------------------------------------------------------------------------
-|
-| Future Ready
-|--------------------------------------------------------------------------
-|
-| ✓ Attachments
-| ✓ Replies
-| ✓ Reactions
-| ✓ Threads
-| ✓ Pins
-| ✓ Polls
-| ✓ Voice Messages
-| ✓ Scheduled Messages
-| ✓ Read Receipts
-| ✓ Delivery Receipts
-| ✓ Multi-device Sync
-| ✓ Message Search
-| ✓ AI Moderation
-| ✓ E2EE Metadata
+| ✓ Counter Maintenance
 |
 |--------------------------------------------------------------------------
 |
@@ -898,14 +1442,14 @@ export async function getMessagesAfter(
 |--------------------------------------------------------------------------
 |
 | Controller
-|        │
-|        ▼
+|      │
+|      ▼
 | Service
-|        │
-|        ▼
+|      │
+|      ▼
 | Repository
-|        │
-|        ▼
+|      │
+|      ▼
 | PostgreSQL
 |
 |--------------------------------------------------------------------------
@@ -920,8 +1464,8 @@ export async function getMessagesAfter(
 |
 | Repository MUST NEVER:
 |
-| ✗ Validate
-| ✗ Authorize
+| ✗ Validate Requests
+| ✗ Authorize Users
 | ✗ Start Transactions
 | ✗ Commit Transactions
 | ✗ Rollback Transactions
@@ -930,19 +1474,25 @@ export async function getMessagesAfter(
 |
 |--------------------------------------------------------------------------
 |
-| Message Repository
-|
 | Status
+|--------------------------------------------------------------------------
 |
 | ✓ Production Ready
 | ✓ PostgreSQL Optimized
 | ✓ Repository Pattern
-| ✓ Socket Ready
+| ✓ Full-Text Search Ready
+| ✓ Cursor Pagination Ready
+| ✓ Reply Ready
+| ✓ Thread Ready
+| ✓ Forward Ready
+| ✓ Pin Ready
+| ✓ Attachment Ready
+| ✓ Reaction Ready
+| ✓ Notification Ready
+| ✓ Socket.IO Ready
 | ✓ Redis Ready
 | ✓ Cluster Ready
-| ✓ Multi-device Ready
-| ✓ Future Attachment Ready
-| ✓ Future Read Receipt Ready
+| ✓ AI Ready
 | ✓ Future E2EE Compatible
 |
 |--------------------------------------------------------------------------
