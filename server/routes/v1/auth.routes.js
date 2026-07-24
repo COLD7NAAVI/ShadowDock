@@ -7,6 +7,7 @@ import {
   login,
   refresh,
   logout,
+  logoutAll,
   me,
 } from "../../controllers/auth.controller.js";
 
@@ -24,6 +25,10 @@ import {
 } from "../../middleware/rateLimit.middleware.js";
 
 const router = Router();
+
+/* ============================================================
+   Public Routes
+============================================================ */
 
 router.post(
   "/register",
@@ -47,10 +52,20 @@ router.post(
   refresh
 );
 
+/* ============================================================
+   Protected Routes
+============================================================ */
+
 router.post(
   "/logout",
   auth,
   logout
+);
+
+router.post(
+  "/logout-all",
+  auth,
+  logoutAll
 );
 
 router.get(
