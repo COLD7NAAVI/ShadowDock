@@ -1,4 +1,5 @@
-import asyncHandler from "../utils/asyncHandler.js";
+import asyncHandler
+    from "../utils/asyncHandler.js";
 
 import {
 
@@ -14,18 +15,18 @@ import {
 
 /*
 |--------------------------------------------------------------------------
-| Message Controller
+| ShadowDock Messenger
 |--------------------------------------------------------------------------
+|
+| Message Controller
 |
 | Responsibilities
 |
-| ✓ Send messages
-| ✓ Fetch paginated chat history
-| ✓ Edit messages
-| ✓ Soft delete messages
+| ✓ HTTP Request Handling
+| ✓ Response Formatting
+| ✓ Delegate Business Logic To Service
 |
-| Business logic belongs in Message Service.
-|
+|--------------------------------------------------------------------------
 */
 
 /*
@@ -46,59 +47,70 @@ import {
 |
 */
 
-export const sendMessage = asyncHandler(
+export const sendMessage =
 
-    async (
+    asyncHandler(
 
-        req,
+        async (
 
-        res
+            req,
 
-    ) => {
+            res
 
-        const {
+        ) => {
 
-            chatPublicId,
+            const {
 
-            text,
-
-            messageType = "text",
-
-            metadata = {}
-
-        } = req.body;
-
-        const message = await saveMessage(
-
-            chatPublicId,
-
-            req.user.id,
-
-            {
+                chatPublicId,
 
                 text,
 
-                messageType,
+                messageType = "text",
 
-                metadata
+                metadata = {}
 
-            }
+            } = req.body;
 
-        );
+            const message =
 
-        return res.status(201).json({
+                await saveMessage(
 
-            success: true,
+                    chatPublicId,
 
-            message: "Message sent successfully.",
+                    req.user.id,
 
-            data: message
+                    {
 
-        });
+                        text,
 
-    }
+                        messageType,
 
-);
+                        metadata
+
+                    }
+
+                );
+
+            return res
+
+                .status(201)
+
+                .json({
+
+                    success: true,
+
+                    message:
+
+                        "Message sent successfully.",
+
+                    data: message
+
+                });
+
+        }
+
+    );
+
 /*
 |--------------------------------------------------------------------------
 | Get Chat Messages
@@ -111,73 +123,71 @@ export const sendMessage = asyncHandler(
 | ?limit=50
 | ?before=2026-07-09T12:00:00Z
 |
-| Returns paginated chat history.
-|
-| Notes
-|
-| • Uses public UUIDs only
-| • Requires authenticated user
-| • Membership validation happens inside the service layer
-| • Messages are returned oldest → newest for UI rendering
-| • Supports infinite scrolling
-|
 */
 
-export const getChatMessages = asyncHandler(
+export const getChatMessages =
 
-    async (
+    asyncHandler(
 
-        req,
+        async (
 
-        res
+            req,
 
-    ) => {
+            res
 
-        const {
+        ) => {
 
-            chatPublicId
+            const {
 
-        } = req.params;
+                chatPublicId
 
-        const {
+            } = req.params;
 
-            limit = 50,
+            const {
 
-            before = null
+                limit = 50,
 
-        } = req.query;
+                before = null
 
-        const messages = await getChatMessagesService(
+            } = req.query;
 
-            chatPublicId,
+            const messages =
 
-            req.user.id,
+                await getChatMessagesService(
 
-            Number(limit),
+                    chatPublicId,
 
-            before
+                    req.user.id,
 
-        );
+                    Number(limit),
 
-        return res.status(200).json({
+                    before
 
-            success: true,
+                );
 
-            data: messages,
+            return res
 
-            pagination: {
+                .status(200)
 
-                limit: Number(limit),
+                .json({
 
-                before
+                    success: true,
 
-            }
+                    data: messages,
 
-        });
+                    pagination: {
 
-    }
+                        limit: Number(limit),
 
-);
+                        before
+
+                    }
+
+                });
+
+        }
+
+    );
 /*
 |--------------------------------------------------------------------------
 | Edit Message
@@ -185,76 +195,72 @@ export const getChatMessages = asyncHandler(
 |
 | PATCH /api/v1/messages/:messagePublicId
 |
-| Body
-|
-| {
-|     text,
-|     metadata
-| }
-|
-| Notes
-|
-| • Only the original sender may edit
-| • Soft-deleted messages cannot be edited
-| • Edit authorization is enforced by the service layer
-| • Socket.IO event is emitted after a successful transaction
-|   (implemented in the socket layer)
-|
 */
 
-export const editMessage = asyncHandler(
+export const editMessage =
 
-    async (
+    asyncHandler(
 
-        req,
+        async (
 
-        res
+            req,
 
-    ) => {
+            res
 
-        const {
+        ) => {
 
-            messagePublicId
+            const {
 
-        } = req.params;
+                messagePublicId
 
-        const {
+            } = req.params;
 
-            text,
-
-            metadata = {}
-
-        } = req.body;
-
-        const message = await editMessageService(
-
-            messagePublicId,
-
-            req.user.id,
-
-            {
+            const {
 
                 text,
 
-                metadata
+                metadata = {}
 
-            }
+            } = req.body;
 
-        );
+            const message =
 
-        return res.status(200).json({
+                await editMessageService(
 
-            success: true,
+                    messagePublicId,
 
-            message: "Message updated successfully.",
+                    req.user.id,
 
-            data: message
+                    {
 
-        });
+                        text,
 
-    }
+                        metadata
 
-);
+                    }
+
+                );
+
+            return res
+
+                .status(200)
+
+                .json({
+
+                    success: true,
+
+                    message:
+
+                        "Message updated successfully.",
+
+                    data: message
+
+                });
+
+        }
+
+    );
+
 /*
 |--------------------------------------------------------------------------
 | Delete Message
@@ -262,89 +268,98 @@ export const editMessage = asyncHandler(
 |
 | DELETE /api/v1/messages/:messagePublicId
 |
-| Soft deletes a message.
-|
-| Notes
-|
-| • Only the original sender may delete
-| • Message remains in history
-| • Read receipts remain intact
-| • Replies remain valid
-| • Socket.IO deletion event is emitted after commit
-|   (implemented in the socket layer)
-|
 */
 
-export const deleteMessage = asyncHandler(
+export const deleteMessage =
 
-    async (
+    asyncHandler(
 
-        req,
+        async (
 
-        res
+            req,
 
-    ) => {
+            res
 
-        const {
+        ) => {
 
-            messagePublicId
+            const {
 
-        } = req.params;
+                messagePublicId
 
-        const message = await deleteMessageService(
+            } = req.params;
 
-            messagePublicId,
+            const message =
 
-            req.user.id
+                await deleteMessageService(
 
-        );
+                    messagePublicId,
 
-        return res.status(200).json({
+                    req.user.id
 
-            success: true,
+                );
 
-            message: "Message deleted successfully.",
+            return res
 
-            data: message
+                .status(200)
 
-        });
+                .json({
 
-    }
+                    success: true,
 
-);
+                    message:
+
+                        "Message deleted successfully.",
+
+                    data: message
+
+                });
+
+        }
+
+    );
 
 /*
 |--------------------------------------------------------------------------
-| Message Controller
+| Controller Summary
+|--------------------------------------------------------------------------
+|
+| Responsibilities
+|
+| ✓ Parse HTTP Requests
+| ✓ Call Service Layer
+| ✓ Format JSON Responses
+| ✓ Return Proper HTTP Status Codes
+|
+|--------------------------------------------------------------------------
+|
+| Controller MUST
+|
+| ✓ Receive HTTP Requests
+| ✓ Delegate Business Logic
+| ✓ Return JSON Responses
+| ✓ Throw Errors Through asyncHandler
+|
+|--------------------------------------------------------------------------
+|
+| Controller MUST NEVER
+|
+| ✗ Execute SQL
+| ✗ Access Database
+| ✗ Apply Business Logic
+| ✗ Modify Repository Data Directly
+|
 |--------------------------------------------------------------------------
 |
 | Status
 |
 | ✓ Production Ready
-| ✓ UUID Based
-| ✓ Repository Driven
+| ✓ Thin Controller
 | ✓ Service Driven
+| ✓ Repository Pattern
 | ✓ Transaction Ready
 | ✓ Socket.IO Ready
 | ✓ Infinite Scroll Ready
-| ✓ Read Receipt Ready
-| ✓ Attachments Ready
-| ✓ Reactions Ready
 | ✓ Future E2EE Compatible
-|
-| Future Extensions
-|
-| • Attachments
-| • Voice Notes
-| • Message Reactions
-| • Reply Messages
-| • Forward Messages
-| • Pins
-| • Polls
-| • Scheduled Messages
-| • Threads
-| • Search
-| • Bulk Operations
 |
 |--------------------------------------------------------------------------
 */
