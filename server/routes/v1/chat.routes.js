@@ -6,6 +6,7 @@ import {
 } from "../../controllers/chat.controller.js";
 
 import auth from "../../middleware/auth.middleware.js";
+import validate from "../../middleware/validate.middleware.js";
 import { validateCreatePrivateChat } from "../../validators/chat.validator.js";
 
 const router = Router();
@@ -33,6 +34,7 @@ router.post(
     "/private",
     auth,
     validateCreatePrivateChat,
+    validate,
     createPrivateChat
 );
 

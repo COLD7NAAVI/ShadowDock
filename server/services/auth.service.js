@@ -108,7 +108,7 @@ export async function register({
     const user = await createUser(client, {
       publicId: generatePublicId("usr"),
       username,
-      displayName,
+      displayName: displayName ?? username,
       email,
       passwordHash,
     });

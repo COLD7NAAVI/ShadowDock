@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { authenticate }
+import auth
     from "../../middleware/auth.middleware.js";
 
 import {
@@ -67,7 +67,7 @@ const router = Router();
 
 router.post(
     "/",
-    authenticate,
+    auth,
     createNotification
 );
 
@@ -82,7 +82,7 @@ router.post(
 
 router.patch(
     "/:notificationPublicId",
-    authenticate,
+    auth,
     updateNotification
 );
 
@@ -97,7 +97,7 @@ router.patch(
 
 router.patch(
     "/:notificationPublicId/seen",
-    authenticate,
+    auth,
     markNotificationSeen
 );
 
@@ -112,7 +112,7 @@ router.patch(
 
 router.patch(
     "/:notificationPublicId/read",
-    authenticate,
+    auth,
     markNotificationRead
 );
 
@@ -127,7 +127,7 @@ router.patch(
 
 router.patch(
     "/:notificationPublicId/dismiss",
-    authenticate,
+    auth,
     dismissNotification
 );
 
@@ -142,7 +142,7 @@ router.patch(
 
 router.patch(
     "/:notificationPublicId/archive",
-    authenticate,
+    auth,
     archiveNotification
 );
 
@@ -157,7 +157,7 @@ router.patch(
 
 router.delete(
     "/:notificationPublicId",
-    authenticate,
+    auth,
     deleteNotification
 );
 
@@ -172,7 +172,7 @@ router.delete(
 
 router.patch(
     "/:notificationPublicId/metadata",
-    authenticate,
+    auth,
     updateNotificationMetadata
 );
 
@@ -187,7 +187,7 @@ router.patch(
 
 router.post(
     "/:notificationPublicId/open",
-    authenticate,
+    auth,
     incrementNotificationOpen
 );
 
@@ -202,7 +202,7 @@ router.post(
 
 router.post(
     "/:notificationPublicId/click",
-    authenticate,
+    auth,
     incrementNotificationClick
 );
 
@@ -217,7 +217,7 @@ router.post(
 
 router.get(
     "/",
-    authenticate,
+    auth,
     getUserNotifications
 );
 
@@ -232,7 +232,7 @@ router.get(
 
 router.get(
     "/unread",
-    authenticate,
+    auth,
     getUnreadNotifications
 );
 
@@ -247,7 +247,7 @@ router.get(
 
 router.get(
     "/archived",
-    authenticate,
+    auth,
     getArchivedNotifications
 );
 
@@ -262,7 +262,7 @@ router.get(
 
 router.get(
     "/search",
-    authenticate,
+    auth,
     searchNotifications
 );
 
@@ -277,7 +277,7 @@ router.get(
 
 router.get(
     "/count/unread",
-    authenticate,
+    auth,
     countUnreadNotifications
 );
 
@@ -292,7 +292,7 @@ router.get(
 
 router.get(
     "/count/unseen",
-    authenticate,
+    auth,
     countUnseenNotifications
 );
 
@@ -307,7 +307,7 @@ router.get(
 
 router.get(
     "/count",
-    authenticate,
+    auth,
     countUserNotifications
 );
 
@@ -322,7 +322,7 @@ router.get(
 
 router.get(
     "/statistics",
-    authenticate,
+    auth,
     getNotificationStatistics
 );
 

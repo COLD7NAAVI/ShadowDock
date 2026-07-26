@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { authenticate }
+import auth
     from "../../middleware/auth.middleware.js";
 
 import {
@@ -53,7 +53,7 @@ const router = Router();
 
 router.post(
     "/",
-    authenticate,
+    auth,
     addReaction
 );
 
@@ -68,7 +68,7 @@ router.post(
 
 router.delete(
     "/:reactionPublicId",
-    authenticate,
+    auth,
     removeReaction
 );
 
@@ -83,7 +83,7 @@ router.delete(
 
 router.patch(
     "/:reactionPublicId",
-    authenticate,
+    auth,
     updateReaction
 );
 
@@ -98,7 +98,7 @@ router.patch(
 
 router.patch(
     "/:reactionPublicId/metadata",
-    authenticate,
+    auth,
     updateReactionMetadata
 );
 
@@ -113,7 +113,7 @@ router.patch(
 
 router.get(
     "/message/:messagePublicId",
-    authenticate,
+    auth,
     getMessageReactions
 );
 
@@ -128,7 +128,7 @@ router.get(
 
 router.get(
     "/message/:messagePublicId/count",
-    authenticate,
+    auth,
     countMessageReactions
 );
 
@@ -143,7 +143,7 @@ router.get(
 
 router.get(
     "/message/:messagePublicId/type/:reactionType",
-    authenticate,
+    auth,
     countReactionType
 );
 
@@ -158,7 +158,7 @@ router.get(
 
 router.get(
     "/message/:messagePublicId/grouped",
-    authenticate,
+    auth,
     groupReactionsByEmoji
 );
 
@@ -173,7 +173,7 @@ router.get(
 
 router.get(
     "/user",
-    authenticate,
+    auth,
     getUserReactions
 );
 
@@ -188,7 +188,7 @@ router.get(
 
 router.get(
     "/user/count",
-    authenticate,
+    auth,
     countUserReactions
 );
 
@@ -203,7 +203,7 @@ router.get(
 
 router.get(
     "/analytics/most-used",
-    authenticate,
+    auth,
     getMostUsedReactions
 );
 

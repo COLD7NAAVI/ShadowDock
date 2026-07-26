@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { authenticate }
+import auth
     from "../../middleware/auth.middleware.js";
 
 import {
@@ -55,7 +55,7 @@ const router = Router();
 
 router.post(
     "/",
-    authenticate,
+    auth,
     createAttachment
 );
 
@@ -70,7 +70,7 @@ router.post(
 
 router.get(
     "/:attachmentPublicId",
-    authenticate,
+    auth,
     getAttachment
 );
 
@@ -85,7 +85,7 @@ router.get(
 
 router.patch(
     "/:attachmentPublicId/complete",
-    authenticate,
+    auth,
     completeUpload
 );
 
@@ -100,7 +100,7 @@ router.patch(
 
 router.patch(
     "/:attachmentPublicId/metadata",
-    authenticate,
+    auth,
     updateAttachmentMetadata
 );
 
@@ -115,7 +115,7 @@ router.patch(
 
 router.patch(
     "/:attachmentPublicId/virus-scan",
-    authenticate,
+    auth,
     markVirusScan
 );
 
@@ -130,7 +130,7 @@ router.patch(
 
 router.post(
     "/:attachmentPublicId/download",
-    authenticate,
+    auth,
     recordDownload
 );
 
@@ -145,7 +145,7 @@ router.post(
 
 router.delete(
     "/:attachmentPublicId",
-    authenticate,
+    auth,
     deleteAttachment
 );
 
@@ -160,7 +160,7 @@ router.delete(
 
 router.get(
     "/message/:messagePublicId",
-    authenticate,
+    auth,
     getMessageAttachments
 );
 
@@ -175,7 +175,7 @@ router.get(
 
 router.get(
     "/message/:messagePublicId/count",
-    authenticate,
+    auth,
     countMessageAttachments
 );
 
@@ -190,7 +190,7 @@ router.get(
 
 router.get(
     "/chat/:chatPublicId",
-    authenticate,
+    auth,
     getChatAttachments
 );
 
@@ -205,7 +205,7 @@ router.get(
 
 router.get(
     "/chat/:chatPublicId/search",
-    authenticate,
+    auth,
     searchAttachments
 );
 
@@ -220,7 +220,7 @@ router.get(
 
 router.get(
     "/user/uploads/count",
-    authenticate,
+    auth,
     countUserUploads
 );
 

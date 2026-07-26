@@ -235,7 +235,7 @@ export const completeUpload =
 |--------------------------------------------------------------------------
 */
 
-export const updateMetadata =
+export const updateAttachmentMetadata =
 
     asyncHandler(
 

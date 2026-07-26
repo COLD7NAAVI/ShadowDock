@@ -140,7 +140,7 @@ export const updateNotification = asyncHandler(
 |--------------------------------------------------------------------------
 */
 
-export const markSeen = asyncHandler(
+export const markNotificationSeen = asyncHandler(
 
     async (
 
@@ -180,7 +180,7 @@ export const markSeen = asyncHandler(
 |--------------------------------------------------------------------------
 */
 
-export const markRead = asyncHandler(
+export const markNotificationRead = asyncHandler(
 
     async (
 
@@ -381,7 +381,7 @@ export const updateNotificationMetadata = asyncHandler(
 |--------------------------------------------------------------------------
 */
 
-export const recordNotificationOpen = asyncHandler(
+export const incrementNotificationOpen = asyncHandler(
 
     async (
 
@@ -421,7 +421,7 @@ export const recordNotificationOpen = asyncHandler(
 |--------------------------------------------------------------------------
 */
 
-export const recordNotificationClick = asyncHandler(
+export const incrementNotificationClick = asyncHandler(
 
     async (
 
