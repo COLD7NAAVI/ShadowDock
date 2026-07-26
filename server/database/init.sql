@@ -103,6 +103,12 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 \ir migrations/009_create_notifications.sql
 
+------------------------------------------------------------
+-- Friendships
+------------------------------------------------------------
+
+\ir migrations/020_create_friendships.sql
+
 -- ================================================================
 -- Install Update Triggers
 -- ================================================================
@@ -157,6 +163,15 @@ BEGIN
         AND table_name = 'notifications'
     ) THEN
         RAISE EXCEPTION 'Notifications table was not created.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'friendships'
+    ) THEN
+        RAISE EXCEPTION 'Friendships table was not created.';
     END IF;
 
 END;
