@@ -1,13 +1,12 @@
 import {
     createContext,
     useEffect,
-    useMemo
+    useMemo,
+    useState
 } from "react";
 
 import {
 
-    connectSocket,
-    disconnectSocket,
     getSocket
 
 } from "../services/socket.js";
@@ -19,18 +18,23 @@ import {
 |
 | Socket Context
 |
-| Current Responsibilities
+| Responsibilities
 |
-| ✓ Own Socket lifecycle
-| ✓ Automatically connect
-| ✓ Automatically disconnect
-| ✓ Provide shared socket instance
+| ✓ Expose shared Socket.IO instance
+| ✓ Track connection state
+| ✓ Listen for socket lifecycle events
 |
-| Future
+| This context NEVER:
 |
-| ✓ Read JWT from AuthContext
-| ✓ Connect after login
-| ✓ Disconnect after logout
+| ✗ Creates sockets
+| ✗ Connects sockets
+| ✗ Disconnects sockets
+| ✗ Handles authentication
+|
+| Those responsibilities belong to:
+|
+| • AuthContext
+| • services/socket.js
 |
 |--------------------------------------------------------------------------
 */
@@ -43,22 +47,135 @@ export function SocketProvider({
 
 }) {
 
-    
+    /*
+    |--------------------------------------------------------------------------
+    | Shared Socket Instance
+    |--------------------------------------------------------------------------
+    */
+
+    const socket = getSocket();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Connection State
+    |--------------------------------------------------------------------------
+    */
+
+    const [
+
+        connected,
+
+        setConnected
+
+    ] = useState(
+
+        socket?.connected ?? false
+
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Listen For Socket Events
+    |--------------------------------------------------------------------------
+    */
+
+    useEffect(() => {
+
+        if (!socket) {
+
+            return;
+
+        }
+
+        const handleConnect = () => {
+
+            setConnected(true);
+
+        };
+
+        const handleDisconnect = () => {
+
+            setConnected(false);
+
+        };
+
+        socket.on(
+
+            "connect",
+
+            handleConnect
+
+        );
+
+        socket.on(
+
+            "disconnect",
+
+            handleDisconnect
+
+        );
+
+        return () => {
+
+            socket.off(
+
+                "connect",
+
+                handleConnect
+
+            );
+
+            socket.off(
+
+                "disconnect",
+
+                handleDisconnect
+
+            );
+
+        };
+
+    }, [
+
+        socket
+
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Context Value
+    |--------------------------------------------------------------------------
+    */
+
     const value = useMemo(
 
         () => ({
 
-            socket: getSocket(),
+            socket,
+
+            connected,
+
+            isConnected: connected
 
         }),
 
-        []
+        [
+
+            socket,
+
+            connected
+
+        ]
 
     );
 
     return (
 
-        <SocketContext.Provider value={value}>
+        <SocketContext.Provider
+
+            value={value}
+
+        >
 
             {children}
 

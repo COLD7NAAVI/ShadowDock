@@ -253,45 +253,39 @@ export function AuthProvider({
     |--------------------------------------------------------------------------
     */
 
-    const value = useMemo(
+    const value = useMemo(() => ({
 
-        () => ({
+        user,
 
-            user,
+        accessToken,
 
-            accessToken,
+        loading,
 
-            loading,
+        socket: connectSocket ? undefined : undefined,
 
-            isAuthenticated:
+        isAuthenticated: !!user,
 
-                !!user,
+        login,
 
-            login,
+        logout,
 
-            logout,
+        restoreSession
 
-            restoreSession
+    }), [
 
-        }),
+        user,
 
-        [
+        accessToken,
 
-            user,
+        loading,
 
-            accessToken,
+        login,
 
-            loading,
+        logout,
 
-            login,
+        restoreSession
 
-            logout,
-
-            restoreSession
-
-        ]
-
-    );
+    ]);
 
     return (
 
