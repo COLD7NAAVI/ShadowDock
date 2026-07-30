@@ -1,4 +1,5 @@
 import api from "./api";
+import getDeviceInfo from "../utils/device";
 
 /*
 |--------------------------------------------------------------------------
@@ -32,7 +33,11 @@ export async function register(data) {
     const response = await api.post(
 
         `${AUTH_BASE}/register`,
-        data
+
+        {
+            ...data,
+            device: getDeviceInfo()
+        }
 
     );
 
@@ -51,7 +56,11 @@ export async function login(data) {
     const response = await api.post(
 
         `${AUTH_BASE}/login`,
-        data
+
+        {
+            ...data,
+            device: getDeviceInfo()
+        }
 
     );
 

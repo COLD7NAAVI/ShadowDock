@@ -95,6 +95,11 @@ export function AuthProvider({
 
             );
 
+            localStorage.setItem(
+                "accessToken",
+                response.accessToken
+            );
+
             setAccessToken(
 
                 response.accessToken
@@ -143,6 +148,10 @@ export function AuthProvider({
 
             setUser(null);
 
+            localStorage.removeItem(
+                "accessToken"
+            );
+
             setAccessToken(null);
 
         },
@@ -175,6 +184,12 @@ export function AuthProvider({
 
                     refreshResponse.accessToken;
 
+                localStorage.setItem(
+                    "accessToken",
+                    token
+                );
+
+
                 setAccessToken(
 
                     token
@@ -197,7 +212,7 @@ export function AuthProvider({
 
                 setUser(
 
-                    me.user
+                    me.data
 
                 );
 
@@ -208,6 +223,10 @@ export function AuthProvider({
                 disconnectSocket();
 
                 setUser(null);
+
+                localStorage.removeItem(
+                    "accessToken"
+                );
 
                 setAccessToken(null);
 
@@ -261,7 +280,7 @@ export function AuthProvider({
 
         loading,
 
-        socket: connectSocket ? undefined : undefined,
+        
 
         isAuthenticated: !!user,
 
