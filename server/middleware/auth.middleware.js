@@ -41,7 +41,7 @@ function auth(req, res, next) {
       }
     );
 
-    req.user = payload;
+    req.user = Object.freeze(payload);
 
     next();
   } catch (error) {

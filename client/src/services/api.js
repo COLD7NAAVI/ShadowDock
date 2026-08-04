@@ -5,16 +5,15 @@ import axios from "axios";
 | ShadowDock API Client
 |--------------------------------------------------------------------------
 |
-| Single Axios instance for the entire application.
+| Production Features
 |
-| Responsibilities
-|
-| ✓ Base URL
-| ✓ JSON requests
-| ✓ Authorization header
-| ✓ Future refresh token support
-| ✓ Future request logging
-| ✓ Future retry support
+| ✓ Single Axios Instance
+| ✓ Automatic Access Token
+| ✓ Automatic Refresh Token
+| ✓ Request Retry
+| ✓ Prevent Multiple Refresh Requests
+| ✓ Logout On Refresh Failure
+| ✓ Future Ready
 |
 |--------------------------------------------------------------------------
 */
@@ -31,6 +30,8 @@ const api = axios.create({
 
         15000,
 
+    withCredentials: true,
+
     headers: {
 
         "Content-Type":
@@ -43,11 +44,42 @@ const api = axios.create({
 
 /*
 |--------------------------------------------------------------------------
+| Refresh Queue
+|--------------------------------------------------------------------------
+*/
+
+let isRefreshing = false;
+
+let refreshSubscribers = [];
+
+/*
+|--------------------------------------------------------------------------
+| Notify Waiting Requests
+|--------------------------------------------------------------------------
+*/
+
+function onTokenRefreshed(token) {
+
+    refreshSubscribers.forEach(
+
+        (callback) => callback(token)
+
+    );
+
+    refreshSubscribers = [];
+
+}
+
+function addRefreshSubscriber(callback) {
+
+    refreshSubscribers.push(callback);
+
+}
+
+/*
+|--------------------------------------------------------------------------
 | Request Interceptor
 |--------------------------------------------------------------------------
-|
-| Automatically attaches JWT.
-|
 */
 
 api.interceptors.request.use(
@@ -84,25 +116,183 @@ api.interceptors.request.use(
 |--------------------------------------------------------------------------
 | Response Interceptor
 |--------------------------------------------------------------------------
-|
-| Future:
-|
-| ✓ Refresh Token
-| ✓ Logout on 401
-| ✓ Retry Requests
-| ✓ Error Logging
-|
 */
 
 api.interceptors.response.use(
 
-    (response) =>
-
-        response,
+    (response) => response,
 
     async (error) => {
 
-        return Promise.reject(error);
+        const originalRequest = error.config;
+
+        /*
+        -------------------------------------------------------
+        Ignore if not authentication error
+        -------------------------------------------------------
+        */
+
+        if (
+
+            error.response?.status !== 401 ||
+
+            originalRequest._retry
+
+        ) {
+
+            return Promise.reject(error);
+
+        }
+
+        /*
+        -------------------------------------------------------
+        Don't refresh refresh()
+        -------------------------------------------------------
+        */
+
+        if (
+
+            originalRequest.url.includes(
+
+                "/auth/refresh"
+
+            )
+
+        ) {
+
+            localStorage.removeItem(
+
+                "accessToken"
+
+            );
+
+            window.location.href = "/login";
+
+            return Promise.reject(error);
+
+        }
+
+        originalRequest._retry = true;
+
+        /*
+        -------------------------------------------------------
+        Refresh Already Running
+        -------------------------------------------------------
+        */
+
+        if (isRefreshing) {
+
+            return new Promise(
+
+                (resolve) => {
+
+                    addRefreshSubscriber(
+
+                        (token) => {
+
+                            originalRequest.headers.Authorization =
+
+                                `Bearer ${token}`;
+
+                            resolve(
+
+                                api(originalRequest)
+
+                            );
+
+                        }
+
+                    );
+
+                }
+
+            );
+
+        }
+
+        /*
+        -------------------------------------------------------
+        Start Refresh
+        -------------------------------------------------------
+        */
+
+        isRefreshing = true;
+
+        try {
+
+            const response =
+
+                await axios.post(
+
+                    `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/auth/refresh`,
+
+                    {},
+
+                    {
+
+                        withCredentials: true
+
+                    }
+
+                );
+
+            const newAccessToken =
+
+                response.data.accessToken;
+
+            localStorage.setItem(
+
+                "accessToken",
+
+                newAccessToken
+
+            );
+
+            api.defaults.headers.Authorization =
+
+                `Bearer ${newAccessToken}`;
+
+            onTokenRefreshed(
+
+                newAccessToken
+
+            );
+
+            originalRequest.headers.Authorization =
+
+                `Bearer ${newAccessToken}`;
+
+            return api(
+
+                originalRequest
+
+            );
+
+        }
+
+        catch (refreshError) {
+
+            localStorage.removeItem(
+
+                "accessToken"
+
+            );
+
+            window.location.href = "/login";
+
+            return Promise.reject(
+
+                refreshError
+
+            );
+
+        }
+
+        finally {
+
+            isRefreshing = false;
+
+        }
 
     }
 

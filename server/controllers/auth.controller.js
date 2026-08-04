@@ -298,10 +298,7 @@ export const refresh =
 
             const {
 
-                refreshToken:
-
-                    newRefreshToken,
-
+                refreshToken,
                 ...response
 
             } = result;
@@ -310,7 +307,7 @@ export const refresh =
 
                 res,
 
-                newRefreshToken
+                RefreshToken
 
             );
 

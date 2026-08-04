@@ -215,11 +215,17 @@ export async function login({
   userAgent = null,
 }) {
   const user = await findUserByEmail(email);
+  
 
   if (!user) {
     throw new ApiError(401, "Invalid email or password");
   }
-
+  if (user.account_status !== "active") {
+    throw new ApiError(
+        403,
+        "Account is disabled"
+    );
+  }
   const passwordValid = await verifyPassword(password, user.password_hash);
 
   if (!passwordValid) {
