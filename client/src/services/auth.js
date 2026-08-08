@@ -1,22 +1,10 @@
-import api from "./api";
-import getDeviceInfo from "../utils/device";
+import api from "./api.js";
+
+import getDeviceInfo from "../utils/device.js";
 
 /*
 |--------------------------------------------------------------------------
-| ShadowDock Messenger
-|--------------------------------------------------------------------------
-|
-| Authentication Service
-|
-| Responsible for communicating with the backend
-| authentication endpoints.
-|
-| This service NEVER:
-|
-| ✗ Stores React state
-| ✗ Manipulates UI
-| ✗ Contains business logic
-|
+| ShadowDock Authentication Service
 |--------------------------------------------------------------------------
 */
 
@@ -35,8 +23,12 @@ export async function register(data) {
         `${AUTH_BASE}/register`,
 
         {
+
             ...data,
-            device: getDeviceInfo()
+
+            device:
+                getDeviceInfo()
+
         }
 
     );
@@ -58,8 +50,12 @@ export async function login(data) {
         `${AUTH_BASE}/login`,
 
         {
+
             ...data,
-            device: getDeviceInfo()
+
+            device:
+                getDeviceInfo()
+
         }
 
     );
@@ -70,7 +66,7 @@ export async function login(data) {
 
 /*
 |--------------------------------------------------------------------------
-| Refresh Access Token
+| Refresh
 |--------------------------------------------------------------------------
 */
 

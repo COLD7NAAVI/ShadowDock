@@ -1,32 +1,21 @@
 import {
-
-    BrowserRouter,
-
     Navigate,
-
     Route,
-
     Routes
-
 } from "react-router-dom";
 
 import {
-
     useContext
-
 } from "react";
 
-import AuthContext from "../context/AuthContext";
+import AuthContext from "../context/AuthContext.jsx";
 
-import { AuthProvider } from "../context/AuthContext";
-import { SocketProvider } from "../context/SocketContext";
+import ProtectedRoute from "../components/ProtectedRoute.jsx";
+import PublicRoute from "../components/PublicRoute.jsx";
 
-import ProtectedRoute from "../components/ProtectedRoute";
-import PublicRoute from "../components/PublicRoute";
-
-import HomePage from "../pages/HomePage";
-import LoginPage from "../pages/LoginPage";
-import RegisterPage from "../pages/RegisterPage";
+import HomePage from "../pages/HomePage.jsx";
+import LoginPage from "../pages/LoginPage.jsx";
+import RegisterPage from "../pages/RegisterPage.jsx";
 
 /*
 |--------------------------------------------------------------------------
@@ -37,10 +26,13 @@ import RegisterPage from "../pages/RegisterPage";
 |
 | Responsibilities
 |
-| ✓ Initialize Providers
+| ✓ Read authentication state
 | ✓ Configure React Router
 | ✓ Protect private routes
 | ✓ Redirect authenticated users
+| ✓ Handle session restoration state
+|
+| Router and global providers are initialized in main.jsx.
 |
 |--------------------------------------------------------------------------
 */
@@ -48,14 +40,8 @@ import RegisterPage from "../pages/RegisterPage";
 function AppRouter() {
 
     const {
-
         loading
-
-    } = useContext(
-
-        AuthContext
-
-    );
+    } = useContext(AuthContext);
 
     /*
     |--------------------------------------------------------------------------
@@ -66,39 +52,30 @@ function AppRouter() {
     if (loading) {
 
         return (
-
             <div
-
                 style={{
-
                     display: "flex",
-
                     justifyContent: "center",
-
                     alignItems: "center",
-
                     height: "100vh",
-
                     background: "#020617",
-
                     color: "white",
-
                     fontSize: 22
-
                 }}
-
             >
-
                 Loading...
-
             </div>
-
         );
 
     }
 
-    return (
+    /*
+    |--------------------------------------------------------------------------
+    | Application Routes
+    |--------------------------------------------------------------------------
+    */
 
+    return (
         <Routes>
 
             {/* ------------------------------------------------------ */}
@@ -108,22 +85,17 @@ function AppRouter() {
             <Route element={<PublicRoute />}>
 
                 <Route
-
                     path="/login"
-
                     element={<LoginPage />}
-
                 />
 
                 <Route
-
                     path="/register"
-
                     element={<RegisterPage />}
-
                 />
 
             </Route>
+
 
             {/* ------------------------------------------------------ */}
             {/* Protected Routes */}
@@ -132,69 +104,37 @@ function AppRouter() {
             <Route element={<ProtectedRoute />}>
 
                 <Route
-
                     path="/"
-
                     element={<HomePage />}
-
                 />
 
             </Route>
+
 
             {/* ------------------------------------------------------ */}
             {/* Fallback */}
             {/* ------------------------------------------------------ */}
 
             <Route
-
                 path="*"
-
                 element={
-
                     <Navigate
-
                         to="/"
-
                         replace
-
                     />
-
                 }
-
             />
 
         </Routes>
-
     );
 
 }
+
 
 /*
 |--------------------------------------------------------------------------
-| Root Router
+| Export
 |--------------------------------------------------------------------------
 */
 
-function AppRoutes() {
-
-    return (
-
-        <BrowserRouter>
-
-            <AuthProvider>
-
-                <SocketProvider>
-
-                    <AppRouter />
-
-                </SocketProvider>
-
-            </AuthProvider>
-
-        </BrowserRouter>
-
-    );
-
-}
-
-export default AppRoutes;
+export default AppRouter;

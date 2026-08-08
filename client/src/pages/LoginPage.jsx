@@ -1,30 +1,21 @@
-import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import {
 
-import { useContext } from "react";
+    useState
 
-import AuthContext from "../context/AuthContext";
+} from "react";
+
+import {
+
+    Navigate
+
+} from "react-router-dom";
+
+import useAuth
+    from "../hooks/useAuth.js";
 
 /*
 |--------------------------------------------------------------------------
-| ShadowDock Messenger
-|--------------------------------------------------------------------------
-|
-| Login Page
-|
-| Responsibilities
-|
-| ✓ Collect credentials
-| ✓ Authenticate user
-| ✓ Show loading state
-| ✓ Show server errors
-|
-| This page NEVER:
-|
-| ✗ Talks directly to API
-| ✗ Stores tokens
-| ✗ Connects sockets
-|
+| ShadowDock Login Page
 |--------------------------------------------------------------------------
 */
 
@@ -36,17 +27,7 @@ function LoginPage() {
 
         isAuthenticated
 
-    } = useContext(
-
-        AuthContext
-
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | Form State
-    |--------------------------------------------------------------------------
-    */
+    } = useAuth();
 
     const [
 
@@ -86,19 +67,40 @@ function LoginPage() {
     |--------------------------------------------------------------------------
     */
 
-    const handleSubmit = async (event) => {
+    async function handleSubmit(event) {
 
         event.preventDefault();
 
-        setLoading(true);
-
         setError("");
+
+        if (!email.trim()) {
+
+            setError(
+                "Email is required."
+            );
+
+            return;
+
+        }
+
+        if (!password) {
+
+            setError(
+                "Password is required."
+            );
+
+            return;
+
+        }
+
+        setLoading(true);
 
         try {
 
             await login({
 
-                email,
+                email:
+                    email.trim(),
 
                 password
 
@@ -112,6 +114,10 @@ function LoginPage() {
 
                 err?.response?.data?.message ||
 
+                err?.response?.data?.errors?.[0]?.msg ||
+
+                err?.message ||
+
                 "Login failed."
 
             );
@@ -124,145 +130,142 @@ function LoginPage() {
 
         }
 
-    };
+    }
 
     /*
     |--------------------------------------------------------------------------
-    | Already Logged In
+    | Redirect
     |--------------------------------------------------------------------------
     */
 
     if (isAuthenticated) {
 
-        return <Navigate to="/" replace />;
+        return (
+
+            <Navigate
+                to="/"
+                replace
+            />
+
+        );
 
     }
 
     return (
 
-        <div
-            style={{
+        <main className="auth-page">
 
-                display: "flex",
+            <section className="auth-card">
 
-                justifyContent: "center",
+                <div className="auth-logo">
 
-                alignItems: "center",
+                    ◈
 
-                height: "100vh",
-
-                background: "#020617"
-
-            }}
-        >
-
-            <form
-
-                onSubmit={handleSubmit}
-
-                style={{
-
-                    width: 380,
-
-                    padding: 40,
-
-                    borderRadius: 16,
-
-                    background: "#0f172a",
-
-                    display: "flex",
-
-                    flexDirection: "column",
-
-                    gap: 18
-
-                }}
-
-            >
+                </div>
 
                 <h1>
 
-                    ShadowDock Login
+                    ShadowDock
 
                 </h1>
 
-                <input
+                <p className="auth-subtitle">
 
-                    type="email"
+                    Secure communication.
 
-                    placeholder="Email"
+                </p>
 
-                    value={email}
+                <form
 
-                    onChange={(event) =>
+                    onSubmit={handleSubmit}
 
-                        setEmail(
-
-                            event.target.value
-
-                        )
-
-                    }
-
-                />
-
-                <input
-
-                    type="password"
-
-                    placeholder="Password"
-
-                    value={password}
-
-                    onChange={(event) =>
-
-                        setPassword(
-
-                            event.target.value
-
-                        )
-
-                    }
-
-                />
-
-                {
-
-                    error &&
-
-                    <span>
-
-                        {error}
-
-                    </span>
-
-                }
-
-                <button
-
-                    disabled={loading}
+                    className="auth-form"
 
                 >
 
-                    {
+                    <label>
 
-                        loading
+                        Email
 
-                        ?
+                        <input
 
-                        "Signing In..."
+                            type="email"
 
-                        :
+                            value={email}
 
-                        "Login"
+                            onChange={(event) =>
+                                setEmail(
+                                    event.target.value
+                                )
+                            }
 
-                    }
+                            autoComplete="username"
 
-                </button>
+                            placeholder="Email"
 
-            </form>
+                            disabled={loading}
 
-        </div>
+                        />
+
+                    </label>
+
+                    <label>
+
+                        Password
+
+                        <input
+
+                            type="password"
+
+                            value={password}
+
+                            onChange={(event) =>
+                                setPassword(
+                                    event.target.value
+                                )
+                            }
+
+                            autoComplete="current-password"
+
+                            placeholder="Password"
+
+                            disabled={loading}
+
+                        />
+
+                    </label>
+
+                    {error && (
+
+                        <div className="auth-error">
+
+                            {error}
+
+                        </div>
+
+                    )}
+
+                    <button
+
+                        type="submit"
+
+                        disabled={loading}
+
+                        className="auth-button"
+
+                    >
+
+                        {loading
+                            ? "Signing In..."
+                            : "Login"}
+
+                    </button>
+
+                </form>
+
+            </section>
+
+        </main>
 
     );
 

@@ -5,38 +5,36 @@ import axios from "axios";
 | ShadowDock API Client
 |--------------------------------------------------------------------------
 |
-| Production Features
+| Central Axios instance.
 |
-| ✓ Single Axios Instance
-| ✓ Automatic Access Token
-| ✓ Automatic Refresh Token
-| ✓ Request Retry
-| ✓ Prevent Multiple Refresh Requests
-| ✓ Logout On Refresh Failure
-| ✓ Future Ready
+| Responsibilities:
+| ✓ API base URL
+| ✓ Access-token injection
+| ✓ Automatic refresh
+| ✓ Refresh request queue
+| ✓ Retry failed request once
+| ✓ Session cleanup on refresh failure
 |
 |--------------------------------------------------------------------------
 */
 
+const API_BASE_URL =
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:5000/api/v1";
+
 const api = axios.create({
 
-    baseURL:
+    baseURL: API_BASE_URL,
 
-        import.meta.env.VITE_API_URL ||
-
-        "http://localhost:5000",
-
-    timeout:
-
-        15000,
+    timeout: 15000,
 
     withCredentials: true,
 
     headers: {
 
-        "Content-Type":
+        "Content-Type": "application/json",
 
-            "application/json"
+        Accept: "application/json"
 
     }
 
@@ -44,7 +42,7 @@ const api = axios.create({
 
 /*
 |--------------------------------------------------------------------------
-| Refresh Queue
+| Refresh state
 |--------------------------------------------------------------------------
 */
 
@@ -54,31 +52,86 @@ let refreshSubscribers = [];
 
 /*
 |--------------------------------------------------------------------------
-| Notify Waiting Requests
+| Access token helpers
 |--------------------------------------------------------------------------
 */
 
-function onTokenRefreshed(token) {
+function getAccessToken() {
 
-    refreshSubscribers.forEach(
-
-        (callback) => callback(token)
-
+    return localStorage.getItem(
+        "accessToken"
     );
-
-    refreshSubscribers = [];
 
 }
 
-function addRefreshSubscriber(callback) {
+function setAccessToken(token) {
 
-    refreshSubscribers.push(callback);
+    if (!token) {
+
+        return;
+
+    }
+
+    localStorage.setItem(
+        "accessToken",
+        token
+    );
+
+}
+
+function clearAccessToken() {
+
+    localStorage.removeItem(
+        "accessToken"
+    );
 
 }
 
 /*
 |--------------------------------------------------------------------------
-| Request Interceptor
+| Refresh queue
+|--------------------------------------------------------------------------
+*/
+
+function subscribeToTokenRefresh(callback) {
+
+    refreshSubscribers.push(callback);
+
+}
+
+function notifyTokenRefreshed(token) {
+
+    const subscribers =
+        refreshSubscribers;
+
+    refreshSubscribers = [];
+
+    subscribers.forEach(
+
+        (callback) => callback(token)
+
+    );
+
+}
+
+function rejectTokenRefresh(error) {
+
+    const subscribers =
+        refreshSubscribers;
+
+    refreshSubscribers = [];
+
+    subscribers.forEach(
+
+        (callback) => callback(null, error)
+
+    );
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Request interceptor
 |--------------------------------------------------------------------------
 */
 
@@ -87,18 +140,18 @@ api.interceptors.request.use(
     (config) => {
 
         const token =
-
-            localStorage.getItem(
-
-                "accessToken"
-
-            );
+            getAccessToken();
 
         if (token) {
 
-            config.headers.Authorization =
+            config.headers = {
 
-                `Bearer ${token}`;
+                ...config.headers,
+
+                Authorization:
+                    `Bearer ${token}`
+
+            };
 
         }
 
@@ -114,7 +167,7 @@ api.interceptors.request.use(
 
 /*
 |--------------------------------------------------------------------------
-| Response Interceptor
+| Response interceptor
 |--------------------------------------------------------------------------
 */
 
@@ -124,17 +177,20 @@ api.interceptors.response.use(
 
     async (error) => {
 
-        const originalRequest = error.config;
+        const originalRequest =
+            error.config;
 
         /*
-        -------------------------------------------------------
-        Ignore if not authentication error
-        -------------------------------------------------------
+        --------------------------------------------------------------
+        Ignore non-authentication errors
+        --------------------------------------------------------------
         */
 
         if (
 
             error.response?.status !== 401 ||
+
+            !originalRequest ||
 
             originalRequest._retry
 
@@ -145,28 +201,28 @@ api.interceptors.response.use(
         }
 
         /*
-        -------------------------------------------------------
-        Don't refresh refresh()
-        -------------------------------------------------------
+        --------------------------------------------------------------
+        Never refresh the refresh endpoint itself
+        --------------------------------------------------------------
         */
 
         if (
 
-            originalRequest.url.includes(
-
+            originalRequest.url?.includes(
                 "/auth/refresh"
-
             )
 
         ) {
 
-            localStorage.removeItem(
+            clearAccessToken();
 
-                "accessToken"
+            window.dispatchEvent(
+
+                new Event(
+                    "shadowdock:auth-failed"
+                )
 
             );
-
-            window.location.href = "/login";
 
             return Promise.reject(error);
 
@@ -175,29 +231,48 @@ api.interceptors.response.use(
         originalRequest._retry = true;
 
         /*
-        -------------------------------------------------------
-        Refresh Already Running
-        -------------------------------------------------------
+        --------------------------------------------------------------
+        Another refresh is already running
+        --------------------------------------------------------------
         */
 
         if (isRefreshing) {
 
             return new Promise(
 
-                (resolve) => {
+                (resolve, reject) => {
 
-                    addRefreshSubscriber(
+                    subscribeToTokenRefresh(
 
-                        (token) => {
+                        (token, refreshError) => {
 
-                            originalRequest.headers.Authorization =
+                            if (
+                                refreshError ||
+                                !token
+                            ) {
 
-                                `Bearer ${token}`;
+                                reject(
+                                    refreshError ||
+                                    new Error(
+                                        "Authentication refresh failed."
+                                    )
+                                );
+
+                                return;
+
+                            }
+
+                            originalRequest.headers = {
+
+                                ...originalRequest.headers,
+
+                                Authorization:
+                                    `Bearer ${token}`
+
+                            };
 
                             resolve(
-
                                 api(originalRequest)
-
                             );
 
                         }
@@ -211,9 +286,9 @@ api.interceptors.response.use(
         }
 
         /*
-        -------------------------------------------------------
-        Start Refresh
-        -------------------------------------------------------
+        --------------------------------------------------------------
+        Start refresh
+        --------------------------------------------------------------
         */
 
         isRefreshing = true;
@@ -221,69 +296,79 @@ api.interceptors.response.use(
         try {
 
             const response =
-
                 await axios.post(
 
-                    `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/auth/refresh`,
+                    `${API_BASE_URL}/auth/refresh`,
 
                     {},
 
                     {
 
-                        withCredentials: true
+                        withCredentials: true,
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json"
+
+                        }
 
                     }
 
                 );
 
             const newAccessToken =
+                response.data?.accessToken;
 
-                response.data.accessToken;
+            if (!newAccessToken) {
 
-            localStorage.setItem(
+                throw new Error(
+                    "Refresh response did not contain an access token."
+                );
 
-                "accessToken",
+            }
 
+            setAccessToken(
                 newAccessToken
-
             );
 
-            api.defaults.headers.Authorization =
-
-                `Bearer ${newAccessToken}`;
-
-            onTokenRefreshed(
-
+            notifyTokenRefreshed(
                 newAccessToken
-
             );
 
-            originalRequest.headers.Authorization =
+            originalRequest.headers = {
 
-                `Bearer ${newAccessToken}`;
+                ...originalRequest.headers,
+
+                Authorization:
+                    `Bearer ${newAccessToken}`
+
+            };
 
             return api(
-
                 originalRequest
-
             );
 
         }
 
         catch (refreshError) {
 
-            localStorage.removeItem(
+            clearAccessToken();
 
-                "accessToken"
+            rejectTokenRefresh(
+                refreshError
+            );
+
+            window.dispatchEvent(
+
+                new Event(
+                    "shadowdock:auth-failed"
+                )
 
             );
 
-            window.location.href = "/login";
-
             return Promise.reject(
-
                 refreshError
-
             );
 
         }
@@ -297,5 +382,15 @@ api.interceptors.response.use(
     }
 
 );
+
+export {
+
+    getAccessToken,
+
+    setAccessToken,
+
+    clearAccessToken
+
+};
 
 export default api;

@@ -4,45 +4,20 @@ import {
 
 } from "react";
 
-import SocketContext from "../context/SocketContext.jsx";
+import SocketContext
+    from "../context/SocketContext.jsx";
 
 /*
 |--------------------------------------------------------------------------
-| ShadowDock Messenger
-|--------------------------------------------------------------------------
-|
-| Socket Hook
-|
-| Provides access to the application's
-| shared Socket.IO context.
-|
-| Responsibilities
-|
-| ✓ Consume SocketContext
-| ✓ Enforce Provider usage
-|
-| This hook NEVER:
-|
-| ✗ Creates sockets
-| ✗ Connects sockets
-| ✗ Disconnects sockets
-|
-| Those responsibilities belong to:
-|
-| • SocketContext
-| • AuthContext
-|
+| ShadowDock Socket Hook
 |--------------------------------------------------------------------------
 */
 
 export default function useSocket() {
 
     const context =
-
         useContext(
-
             SocketContext
-
         );
 
     if (!context) {

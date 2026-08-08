@@ -1,51 +1,51 @@
 import {
+
     createContext,
-    useState,
-    useEffect,
     useCallback,
-    useMemo
+    useEffect,
+    useMemo,
+    useState
+
 } from "react";
 
-import * as authService from "../services/auth.js";
+import * as authService
+    from "../services/auth.js";
 
 import {
+
+    clearAccessToken,
+    setAccessToken
+
+} from "../services/api.js";
+
+import {
+
     connectSocket,
-    disconnectSocket
+    disconnectSocket,
+    updateSocketToken
+
 } from "../services/socket.js";
 
 /*
 |--------------------------------------------------------------------------
-| ShadowDock Messenger
-|--------------------------------------------------------------------------
-|
-| Authentication Context
-|
-| Responsibilities
-|
-| ✓ Authentication State
-| ✓ Current User
-| ✓ Access Token
-| ✓ Login
-| ✓ Logout
-| ✓ Session Restore
-| ✓ Socket Lifecycle
-|
+| Context
 |--------------------------------------------------------------------------
 */
 
-const AuthContext = createContext(null);
+const AuthContext =
+    createContext(null);
+
+/*
+|--------------------------------------------------------------------------
+| Provider
+|--------------------------------------------------------------------------
+*/
 
 export function AuthProvider({
 
     children
 
 }) {
-
-    /*
-    |--------------------------------------------------------------------------
-    | State
-    |--------------------------------------------------------------------------
-    */
 
     const [
 
@@ -59,7 +59,7 @@ export function AuthProvider({
 
         accessToken,
 
-        setAccessToken
+        setAccessTokenState
 
     ] = useState(null);
 
@@ -82,34 +82,38 @@ export function AuthProvider({
         async (credentials) => {
 
             const response =
-
                 await authService.login(
-
                     credentials
+                );
+
+            const token =
+                response?.accessToken;
+
+            if (!token) {
+
+                throw new Error(
+
+                    "Login response did not contain an access token."
 
                 );
 
-            setUser(
-
-                response.user
-
-            );
-
-            localStorage.setItem(
-                "accessToken",
-                response.accessToken
-            );
+            }
 
             setAccessToken(
+                token
+            );
 
-                response.accessToken
+            setAccessTokenState(
+                token
+            );
 
+            setUser(
+                response?.user ??
+                null
             );
 
             connectSocket(
-
-                response.accessToken
-
+                token
             );
 
             return response;
@@ -139,20 +143,19 @@ export function AuthProvider({
             catch {
 
                 /*
-                 Ignore logout failures.
+                Logout must still clear the
+                local session if server logout fails.
                 */
 
             }
 
             disconnectSocket();
 
+            clearAccessToken();
+
             setUser(null);
 
-            localStorage.removeItem(
-                "accessToken"
-            );
-
-            setAccessToken(null);
+            setAccessTokenState(null);
 
         },
 
@@ -162,7 +165,7 @@ export function AuthProvider({
 
     /*
     |--------------------------------------------------------------------------
-    | Restore Session
+    | Restore session
     |--------------------------------------------------------------------------
     */
 
@@ -172,48 +175,55 @@ export function AuthProvider({
 
             try {
 
-                /*
-                 Refresh Access Token
-                */
-
-                const refreshResponse =
-
+                const response =
                     await authService.refresh();
 
                 const token =
+                    response?.accessToken;
 
-                    refreshResponse.accessToken;
+                if (!token) {
 
-                localStorage.setItem(
-                    "accessToken",
-                    token
-                );
+                    throw new Error(
 
+                        "No access token returned during refresh."
+
+                    );
+
+                }
 
                 setAccessToken(
-
                     token
-
                 );
 
-                connectSocket(
-
+                setAccessTokenState(
                     token
-
                 );
 
                 /*
-                 Load Current User
+                ----------------------------------------------------------
+                Load authoritative user
+                ----------------------------------------------------------
                 */
 
                 const me =
-
                     await authService.getCurrentUser();
 
+                const currentUser =
+                    me?.data ??
+                    me;
+
                 setUser(
+                    currentUser
+                );
 
-                    me.data
+                /*
+                ----------------------------------------------------------
+                Start Socket.IO
+                ----------------------------------------------------------
+                */
 
+                connectSocket(
+                    token
                 );
 
             }
@@ -222,13 +232,11 @@ export function AuthProvider({
 
                 disconnectSocket();
 
+                clearAccessToken();
+
                 setUser(null);
 
-                localStorage.removeItem(
-                    "accessToken"
-                );
-
-                setAccessToken(null);
+                setAccessTokenState(null);
 
             }
 
@@ -246,19 +254,13 @@ export function AuthProvider({
 
     /*
     |--------------------------------------------------------------------------
-    | Restore On Startup
+    | Restore on application startup
     |--------------------------------------------------------------------------
     */
 
     useEffect(() => {
 
-        const initialize = async () => {
-
-         await restoreSession();
-
-        };
-
-        void initialize();
+        void restoreSession();
 
     }, [
 
@@ -268,43 +270,112 @@ export function AuthProvider({
 
     /*
     |--------------------------------------------------------------------------
-    | Context Value
+    | Authentication failure from Axios
     |--------------------------------------------------------------------------
     */
 
-    const value = useMemo(() => ({
+    useEffect(() => {
 
-        user,
+        const handleAuthFailure = () => {
 
-        accessToken,
+            disconnectSocket();
 
-        loading,
+            clearAccessToken();
 
-        
+            setUser(null);
 
-        isAuthenticated: !!user,
+            setAccessTokenState(null);
 
-        login,
+        };
 
-        logout,
+        window.addEventListener(
 
-        restoreSession
+            "shadowdock:auth-failed",
 
-    }), [
+            handleAuthFailure
 
-        user,
+        );
 
-        accessToken,
+        return () => {
 
-        loading,
+            window.removeEventListener(
 
-        login,
+                "shadowdock:auth-failed",
 
-        logout,
+                handleAuthFailure
 
-        restoreSession
+            );
+
+        };
+
+    }, []);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Keep Socket.IO token synchronized
+    |--------------------------------------------------------------------------
+    */
+
+    useEffect(() => {
+
+        if (accessToken) {
+
+            updateSocketToken(
+                accessToken
+            );
+
+        }
+
+    }, [
+
+        accessToken
 
     ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Context value
+    |--------------------------------------------------------------------------
+    */
+
+    const value = useMemo(
+
+        () => ({
+
+            user,
+
+            accessToken,
+
+            loading,
+
+            isAuthenticated:
+                Boolean(user),
+
+            login,
+
+            logout,
+
+            restoreSession
+
+        }),
+
+        [
+
+            user,
+
+            accessToken,
+
+            loading,
+
+            login,
+
+            logout,
+
+            restoreSession
+
+        ]
+
+    );
 
     return (
 

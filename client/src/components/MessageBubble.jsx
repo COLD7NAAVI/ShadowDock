@@ -1,53 +1,128 @@
-function MessageBubble({ message }) {
+function formatTime(
 
-  const isMe = message.sender === "me"
+    timestamp
 
-  return (
+) {
 
-    <div
-      className={`message-row ${
-        isMe
-          ? "message-row-right"
-          : "message-row-left"
-      }`}
-    >
+    if (!timestamp) {
 
-      <div
-        className={`message-bubble ${
-          isMe
-            ? "sent"
-            : "received"
-        }`}
-      >
+        return "";
 
-        <div className="message-text">
-          {message.text}
-        </div>
+    }
 
-        <div className="message-meta">
+    return new Intl.DateTimeFormat(
 
-          <span className="message-time">
-            {message.time || "12:00"}
-          </span>
+        undefined,
 
-          {isMe && (
+        {
 
-            <span className="message-status">
+            hour: "2-digit",
 
-              {message.status === "seen"
-                ? "✓✓"
-                : "✓"}
+            minute: "2-digit",
 
-            </span>
+        }
 
-          )}
+    ).format(
 
-        </div>
+        new Date(timestamp)
 
-      </div>
+    );
 
-    </div>
-  )
 }
 
-export default MessageBubble
+export default function MessageBubble({
+
+    message,
+
+    own,
+
+}) {
+
+    return (
+
+        <div
+
+            className={
+
+                own
+
+                    ? "message-row own"
+
+                    : "message-row"
+
+            }
+
+        >
+
+            <div
+
+                className={
+
+                    own
+
+                        ? "message-bubble own"
+
+                        : "message-bubble"
+
+                }
+
+            >
+
+                {!own &&
+                    message.senderDisplayName && (
+
+                    <div className="message-sender">
+
+                        {message.senderDisplayName}
+
+                    </div>
+
+                )}
+
+                <div className="message-text">
+
+                    {message.deleted
+                        ? "Message deleted"
+                        : message.text}
+
+                </div>
+
+                <div className="message-meta">
+
+                    <span>
+
+                        {formatTime(
+                            message.createdAt
+                        )}
+
+                    </span>
+
+                    {own && (
+
+                        <span>
+
+                            {message.deliveryStatus ===
+                            "failed"
+
+                                ? "!"
+
+                                : message.deliveryStatus ===
+                                  "read"
+
+                                    ? "✓✓"
+
+                                    : "✓"}
+
+                        </span>
+
+                    )}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    );
+
+}

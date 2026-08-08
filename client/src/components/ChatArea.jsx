@@ -1,165 +1,330 @@
-import { useEffect, useRef, useState } from "react"
-import MessageBubble from "./MessageBubble"
+import {
 
-function ChatArea({ chat, onSendMessage, onTyping,
-  typingUser, }) {
+    useEffect,
+    useRef,
+    useState,
 
-  const messagesEndRef = useRef(null)
+} from "react";
 
-  const [message, setMessage] = useState("")
+import MessageBubble from "./MessageBubble.jsx";
 
-  /* AUTO SCROLL */
+export default function ChatArea({
 
-  useEffect(() => {
+    chat,
 
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-    })
+    currentUser,
 
-  }, [chat?.messages])
+    loading,
 
-  /* SEND MESSAGE */
+    onSendMessage,
 
-  const handleSendMessage = () => {
+    connected,
 
-    if (!message.trim()) return
+}) {
 
-    onSendMessage(message)
+    const [
 
-    setMessage("")
-  }
+        message,
 
-  /* EMPTY CHAT */
+        setMessage
 
-  if (!chat) {
+    ] = useState("");
+
+    const [
+
+        sending,
+
+        setSending
+
+    ] = useState(false);
+
+    const messagesEndRef =
+        useRef(null);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Scroll
+    |--------------------------------------------------------------------------
+    */
+
+    useEffect(() => {
+
+        messagesEndRef.current?.scrollIntoView({
+
+            behavior: "smooth",
+
+        });
+
+    }, [
+
+        chat?.messages?.length,
+
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Send
+    |--------------------------------------------------------------------------
+    */
+
+    async function handleSend() {
+
+        const text =
+            message.trim();
+
+        if (
+
+            !text ||
+
+            sending ||
+
+            !connected ||
+
+            !chat
+
+        ) {
+
+            return;
+
+        }
+
+        setSending(true);
+
+        try {
+
+            const success =
+                await onSendMessage(
+                    text
+                );
+
+            if (success) {
+
+                setMessage("");
+
+            }
+
+        }
+
+        finally {
+
+            setSending(false);
+
+        }
+
+    }
+
+    function handleKeyDown(
+
+        event
+
+    ) {
+
+        if (
+
+            event.key === "Enter" &&
+
+            !event.shiftKey
+
+        ) {
+
+            event.preventDefault();
+
+            handleSend();
+
+        }
+
+    }
+
+    if (!chat) {
+
+        return (
+
+            <main className="chat-area empty-chat">
+
+                <div className="empty-chat-content">
+
+                    <div className="empty-logo">
+
+                        ◈
+
+                    </div>
+
+                    <h1>
+
+                        ShadowDock Chat
+
+                    </h1>
+
+                    <p>
+
+                        Select a conversation to begin.
+
+                    </p>
+
+                </div>
+
+            </main>
+
+        );
+
+    }
 
     return (
 
-      <div className="chat-area empty-chat-area">
+        <main className="chat-area">
 
-        <div className="empty-chat-content">
+            <header className="chat-header">
 
-          <h1>ShadowDock Chat</h1>
+                <div className="avatar large">
 
-          <p>
-            Select a conversation to start messaging
-          </p>
+                    {chat.name
+                        ?.charAt(0)
+                        ?.toUpperCase() ||
+                        "?"}
 
-        </div>
+                </div>
 
-      </div>
-    )
-  }
+                <div className="chat-header-info">
 
-  return (
+                    <h2>
 
-    <div className="chat-area">
+                        {chat.name}
 
-      {/* HEADER */}
+                    </h2>
 
-      <div className="chat-header">
+                    <span>
 
-        <div className="chat-header-info">
+                        {connected
+                            ? "Connected"
+                            : "Reconnecting..."}
 
-          <div className="chat-avatar">
-            {chat.name.charAt(0)}
-          </div>
+                    </span>
 
-          <div className="chat-details">
+                </div>
 
-            <h2>{chat.name}</h2>
+            </header>
 
-            <span className="chat-status">
-              {typingUser
-                ? "typing..."
-                : "online"}
-               
-            </span>
+            <section className="messages-container">
 
-          </div>
+                {loading ? (
 
-        </div>
+                    <div className="messages-loading">
 
-      </div>
+                        Loading messages...
 
-      {/* MESSAGES */}
+                    </div>
 
-      <div className="messages">
+                ) : chat.messages?.length === 0 ? (
 
-        <div className="messages-inner">
+                    <div className="no-messages">
 
-          {chat.messages.map((message) => (
+                        <div>
 
-            <MessageBubble
-              key={message.id}
-              message={message}
-            />
+                            No messages yet.
 
-          ))}
+                        </div>
 
-          
+                        <small>
 
-          
-            
-          
-          
+                            Send the first message.
 
-          <div ref={messagesEndRef}></div>
+                        </small>
 
-        </div>
+                    </div>
 
-      </div>
+                ) : (
 
-      {/* INPUT AREA */}
+                    chat.messages.map(
 
-      <div className="message-input-container">
+                        (item) => {
 
-        <textarea
-          className="message-input"
-          placeholder="Type a message..."
-          value={message}
-          rows={1}
+                            const own =
 
-          onChange={(e) =>{
-            setMessage(e.target.value)
-            if (onTyping) {
-              onTyping(chat.id)
-            }
-          }}
+                                item.senderPublicId ===
+                                currentUser?.publicId ||
 
-          onInput={(e) => {
+                                item.senderUsername ===
+                                currentUser?.username;
 
-            e.target.style.height = "auto"
+                            return (
 
-            e.target.style.height =
-              e.target.scrollHeight + "px"
-          }}
+                                <MessageBubble
 
-          onKeyDown={(e) => {
+                                    key={item.id}
 
-            if (
-              e.key === "Enter" &&
-              !e.shiftKey
-            ) {
+                                    message={item}
 
-              e.preventDefault()
+                                    own={own}
 
-              handleSendMessage()
-            }
-          }}
-        />
+                                />
 
-        <button
-          className="send-button"
-          onClick={handleSendMessage}
-        >
-          Send
-        </button>
+                            );
 
-      </div>
+                        }
 
-    </div>
-  )
+                    )
+
+                )}
+
+                <div ref={messagesEndRef} />
+
+            </section>
+
+            <footer className="composer">
+
+                <textarea
+
+                    value={message}
+
+                    onChange={(event) =>
+                        setMessage(
+                            event.target.value
+                        )
+                    }
+
+                    onKeyDown={handleKeyDown}
+
+                    placeholder={
+                        connected
+                            ? "Write a message..."
+                            : "Waiting for connection..."
+                    }
+
+                    disabled={
+                        !connected ||
+                        sending
+                    }
+
+                    rows={1}
+
+                />
+
+                <button
+
+                    onClick={handleSend}
+
+                    disabled={
+
+                        !connected ||
+
+                        sending ||
+
+                        !message.trim()
+
+                    }
+
+                >
+
+                    {sending
+                        ? "..."
+                        : "Send"}
+
+                </button>
+
+            </footer>
+
+        </main>
+
+    );
+
 }
-
-export default ChatArea

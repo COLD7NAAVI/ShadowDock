@@ -250,7 +250,7 @@ export const refresh =
 
         ) => {
 
-            const refreshToken =
+            const incomingRefreshToken =
 
                 req.cookies?.[
 
@@ -260,7 +260,7 @@ export const refresh =
 
             if (
 
-                !refreshToken
+                !incomingRefreshToken
 
             ) {
 
@@ -284,7 +284,7 @@ export const refresh =
 
                 await authService.refresh(
 
-                    refreshToken,
+                    incomingRefreshToken,
 
                     req.ip,
 
@@ -298,7 +298,8 @@ export const refresh =
 
             const {
 
-                refreshToken,
+                refreshToken: newRefreshToken,
+
                 ...response
 
             } = result;
@@ -307,7 +308,7 @@ export const refresh =
 
                 res,
 
-                RefreshToken
+                newRefreshToken
 
             );
 

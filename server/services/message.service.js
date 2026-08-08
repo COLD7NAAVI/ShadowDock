@@ -14,6 +14,10 @@ import {
 } from "../repositories/chat.repository.js";
 
 import {
+    findUserById
+} from "../repositories/user.repository.js";
+
+import {
 
     createMessage,
 
@@ -149,6 +153,19 @@ export async function saveMessage(
 
         }
 
+        const sender = await findUserById(
+            senderId
+        );
+
+        if (!sender) {
+
+            throw new ApiError(
+                404,
+                "Sender not found."
+            );
+
+        }
+
         /*
         ------------------------------------------------------------
         Save Message
@@ -165,7 +182,9 @@ export async function saveMessage(
 
                 senderId,
 
-                text,
+                senderPublicId: sender.public_id,
+
+                content : text,
 
                 messageType,
 

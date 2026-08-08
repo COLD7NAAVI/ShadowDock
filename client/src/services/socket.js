@@ -2,21 +2,13 @@ import { io } from "socket.io-client";
 
 /*
 |--------------------------------------------------------------------------
-| ShadowDock Messenger
-|--------------------------------------------------------------------------
-|
-| Central Socket.IO Service
-|
-| Responsibilities
-|
-| ✓ Singleton socket instance
-| ✓ Manual connect
-| ✓ Manual disconnect
-| ✓ JWT authentication
-| ✓ Reconnection support
-|
+| ShadowDock Socket.IO Service
 |--------------------------------------------------------------------------
 */
+
+const SOCKET_URL =
+    import.meta.env.VITE_SOCKET_URL ||
+    "http://localhost:5000";
 
 let socket = null;
 
@@ -26,41 +18,133 @@ let socket = null;
 |--------------------------------------------------------------------------
 */
 
-export function connectSocket(accessToken = null) {
+export function connectSocket(
+
+    accessToken = null
+
+) {
+
+    /*
+    --------------------------------------------------------------
+    Already connected
+    --------------------------------------------------------------
+    */
 
     if (socket?.connected) {
+
+        /*
+        Update credentials for future reconnects.
+        */
+
+        if (accessToken) {
+
+            socket.auth = {
+
+                token:
+                    accessToken
+
+            };
+
+        }
 
         return socket;
 
     }
 
+    /*
+    --------------------------------------------------------------
+    Existing but disconnected socket
+    --------------------------------------------------------------
+    */
+
+    if (socket) {
+
+        socket.auth = {
+
+            token:
+                accessToken
+
+        };
+
+        socket.connect();
+
+        return socket;
+
+    }
+
+    /*
+    --------------------------------------------------------------
+    Create singleton socket
+    --------------------------------------------------------------
+    */
+
     socket = io(
 
-        import.meta.env.VITE_API_URL ?? "http://localhost:5000",
+        SOCKET_URL,
 
         {
 
-            autoConnect: true,
+            autoConnect: false,
 
             withCredentials: true,
 
-            transports: ["websocket"],
+            transports: [
 
-            auth: accessToken
+                "websocket",
 
-                ? {
+                "polling"
 
-                    token: accessToken
+            ],
 
-                }
+            auth: {
 
-                : {}
+                token:
+                    accessToken
+
+            },
+
+            reconnection: true,
+
+            reconnectionAttempts: Infinity,
+
+            reconnectionDelay: 1000,
+
+            reconnectionDelayMax: 5000
 
         }
 
     );
 
+    socket.connect();
+
     return socket;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Update authentication token
+|--------------------------------------------------------------------------
+*/
+
+export function updateSocketToken(
+
+    accessToken
+
+) {
+
+    if (!socket) {
+
+        return;
+
+    }
+
+    socket.auth = {
+
+        token:
+            accessToken
+
+    };
 
 }
 
@@ -77,6 +161,8 @@ export function disconnectSocket() {
         return;
 
     }
+
+    socket.removeAllListeners();
 
     socket.disconnect();
 
@@ -96,10 +182,4 @@ export function getSocket() {
 
 }
 
-/*
-|--------------------------------------------------------------------------
-| Default Export
-|--------------------------------------------------------------------------
-*/
-
-export default socket;
+export default getSocket;

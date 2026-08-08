@@ -1,8 +1,10 @@
 import {
+
     createContext,
     useEffect,
     useMemo,
     useState
+
 } from "react";
 
 import {
@@ -13,33 +15,18 @@ import {
 
 /*
 |--------------------------------------------------------------------------
-| ShadowDock Messenger
-|--------------------------------------------------------------------------
-|
 | Socket Context
-|
-| Responsibilities
-|
-| ✓ Expose shared Socket.IO instance
-| ✓ Track connection state
-| ✓ Listen for socket lifecycle events
-|
-| This context NEVER:
-|
-| ✗ Creates sockets
-| ✗ Connects sockets
-| ✗ Disconnects sockets
-| ✗ Handles authentication
-|
-| Those responsibilities belong to:
-|
-| • AuthContext
-| • services/socket.js
-|
 |--------------------------------------------------------------------------
 */
 
-const SocketContext = createContext(null);
+const SocketContext =
+    createContext(null);
+
+/*
+|--------------------------------------------------------------------------
+| Provider
+|--------------------------------------------------------------------------
+*/
 
 export function SocketProvider({
 
@@ -47,19 +34,17 @@ export function SocketProvider({
 
 }) {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Shared Socket Instance
-    |--------------------------------------------------------------------------
-    */
+    const [
 
-    const socket = getSocket();
+        socket,
 
-    /*
-    |--------------------------------------------------------------------------
-    | Connection State
-    |--------------------------------------------------------------------------
-    */
+        setSocket
+
+    ] = useState(
+
+        () => getSocket()
+
+    );
 
     const [
 
@@ -69,13 +54,54 @@ export function SocketProvider({
 
     ] = useState(
 
-        socket?.connected ?? false
+        () =>
+            Boolean(
+                getSocket()?.connected
+            )
 
     );
 
     /*
     |--------------------------------------------------------------------------
-    | Listen For Socket Events
+    | Detect socket creation
+    |--------------------------------------------------------------------------
+    */
+
+    useEffect(() => {
+
+        const interval =
+            setInterval(() => {
+
+                const currentSocket =
+                    getSocket();
+
+                setSocket(
+                    currentSocket
+                );
+
+                setConnected(
+
+                    Boolean(
+                        currentSocket?.connected
+                    )
+
+                );
+
+            }, 250);
+
+        return () => {
+
+            clearInterval(
+                interval
+            );
+
+        };
+
+    }, []);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Socket lifecycle
     |--------------------------------------------------------------------------
     */
 
@@ -115,6 +141,10 @@ export function SocketProvider({
 
         );
 
+        setConnected(
+            socket.connected
+        );
+
         return () => {
 
             socket.off(
@@ -143,7 +173,7 @@ export function SocketProvider({
 
     /*
     |--------------------------------------------------------------------------
-    | Context Value
+    | Context
     |--------------------------------------------------------------------------
     */
 
@@ -155,7 +185,8 @@ export function SocketProvider({
 
             connected,
 
-            isConnected: connected
+            isConnected:
+                connected
 
         }),
 
