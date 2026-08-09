@@ -35,7 +35,7 @@ export async function findUserByPublicId(publicId) {
             public_id,
             username,
             display_name,
-            photo
+            avatar
         FROM users
         WHERE
             public_id = $1
@@ -237,7 +237,7 @@ export async function findChatMembers(
             u.public_id,
             u.username,
             u.display_name,
-            u.photo
+            u.avatar
 
         FROM chat_members cm
 
@@ -595,7 +595,7 @@ export async function getUserChats(
             other_user.public_id AS other_user_public_id,
             other_user.username AS other_username,
             other_user.display_name AS other_display_name,
-            other_user.photo AS other_photo
+            other_user.avatar AS other_avatar
 
         FROM chats c
 
@@ -610,7 +610,7 @@ export async function getUserChats(
                 u.public_id,
                 u.username,
                 u.display_name,
-                u.photo
+                u.avatar
 
             FROM chat_members cm2
 

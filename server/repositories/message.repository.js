@@ -680,8 +680,8 @@ export async function getChatMessages(
 
             u.display_name,
 
-            u.photo
-                AS sender_photo
+            u.avatar
+                AS sender_avatar
 
         FROM messages m
 

@@ -49,6 +49,22 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 \echo ''
 \echo 'Running database migrations...'
 
+-- ================================================================
+-- Migration Tracking
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+
+    version INTEGER PRIMARY KEY,
+
+    name TEXT NOT NULL,
+
+    applied_at TIMESTAMPTZ
+        NOT NULL
+        DEFAULT NOW()
+
+);
+
 ------------------------------------------------------------
 -- Users
 ------------------------------------------------------------
@@ -103,11 +119,47 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 \ir migrations/009_create_notifications.sql
 
+INSERT INTO schema_migrations (
+    version,
+    name
+)
+VALUES (
+    009,
+    '009_create_notifications.sql'
+)
+ON CONFLICT (version) DO NOTHING;
+
+---
+
+## -- Device Identifier Uniqueness
+
+\ir migrations/010_fix_device_identifier_uniqueness.sql
+
+INSERT INTO schema_migrations (
+    version,
+    name
+)
+VALUES (
+    010,
+    '010_fix_device_identifier_uniqueness.sql'
+)
+ON CONFLICT (version) DO NOTHING;
+
 ------------------------------------------------------------
 -- Friendships
 ------------------------------------------------------------
 
 \ir migrations/020_create_friendships.sql
+
+INSERT INTO schema_migrations (
+    version,
+    name
+)
+VALUES (
+    020,
+    '020_create_friendships.sql'
+)
+ON CONFLICT (version) DO NOTHING;
 
 -- ================================================================
 -- Install Update Triggers
