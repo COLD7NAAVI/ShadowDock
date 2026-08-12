@@ -22,6 +22,6 @@ export const updateProfileValidator = [
 
 export const publicIdValidator = [
   param("publicId")
-    .isUUID()
+    .matches(/^usr_[A-Za-z0-9]{8}$/)
     .withMessage("Invalid user id"),
 ];

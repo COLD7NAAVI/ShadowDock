@@ -118,6 +118,7 @@ export async function register({
       -------------------------------------------------- */
 
     let deviceRecord = await findDeviceByIdentifier(
+      client,
       user.id,
       device.deviceIdentifier,
     );
@@ -233,6 +234,7 @@ export async function login({
       ------------------------------------------ */
 
     let deviceRecord = await findDeviceByIdentifier(
+      client,
       user.id,
       device.deviceIdentifier,
     );

@@ -69,7 +69,7 @@ export const validateCreatePrivateChat = [
 
         .trim()
 
-        .isUUID()
+        .matches(/^usr_[A-Za-z0-9]{8}$/)
 
         .withMessage(
 

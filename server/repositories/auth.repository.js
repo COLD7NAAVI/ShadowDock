@@ -294,10 +294,11 @@ export async function updateAvatar(
  * Find device belonging to a user by unique identifier.
  */
 export async function findDeviceByIdentifier(
+  client,
   userId,
   deviceIdentifier
 ) {
-  const { rows } = await query(
+  const { rows } = await client.query(
     `
     SELECT
       id,
