@@ -129,10 +129,9 @@ VALUES (
 )
 ON CONFLICT (version) DO NOTHING;
 
----
-
-## -- Device Identifier Uniqueness
-
+-- ------------------------------------------------------------
+-- Device Identifier Uniqueness
+-- ------------------------------------------------------------
 \ir migrations/010_fix_device_identifier_uniqueness.sql
 
 INSERT INTO schema_migrations (
