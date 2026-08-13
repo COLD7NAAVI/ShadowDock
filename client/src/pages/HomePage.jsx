@@ -1,9 +1,25 @@
-import { useMemo, useState } from "react";
+import {
+    useCallback,
+    useEffect,
+    useState
+} from "react";
 
 import Sidebar from "../components/Sidebar";
 import ChatArea from "../components/ChatArea";
 
-import chatsData from "../data/chats";
+import useAuth from "../hooks/useAuth.js";
+import useSocket from "../hooks/useSocket.js";
+
+import {
+    getChats,
+    createPrivateChat
+} from "../services/chat.js";
+
+import {
+    getChatMessages,
+    
+    normalizeMessage
+} from "../services/message.js";
 
 /*
 |--------------------------------------------------------------------------
@@ -14,32 +30,186 @@ import chatsData from "../data/chats";
 |
 | Responsibilities
 |
-| ✓ Display chat layout
+| ✓ Load authenticated user's chats
 | ✓ Manage selected conversation
-| ✓ Provide data to child components
+| ✓ Load message history
+| ✓ Join selected Socket.IO chat room
+| ✓ Send messages
+| ✓ Receive realtime messages
+| ✓ Create private chats
+| ✓ Provide data/actions to child components
 |
 | This page NEVER:
 |
-| ✗ Makes API calls
-| ✗ Connects sockets
-| ✗ Handles authentication
-|
-| Those responsibilities belong elsewhere.
+| ✗ Handles authentication directly
+| ✗ Stores JWT
+| ✗ Executes SQL
 |
 |--------------------------------------------------------------------------
 */
 
+function normalizeChat(chat) {
+
+    if (!chat) {
+
+        return null;
+
+    }
+
+    return {
+
+        ...chat,
+
+        id:
+            chat.public_id ??
+            chat.publicId ??
+            chat.id,
+
+        publicId:
+            chat.public_id ??
+            chat.publicId ??
+            chat.id,
+
+        name:
+            chat.name ??
+            chat.display_name ??
+            chat.username ??
+            "Unknown",
+
+        otherUsername:
+            chat.other_username ??
+            chat.otherUsername ??
+            "",
+
+        messages:
+            Array.isArray(chat.messages)
+                ? chat.messages
+                : [],
+
+        unreadCount:
+            Number(
+                chat.unread_count ??
+                chat.unreadCount ??
+                0
+            )
+
+    };
+
+}
+
 function HomePage() {
+
+    const {
+
+        user,
+
+        logout
+
+    } = useAuth();
+
+    const {
+
+        socket,
+
+        connected
+
+    } = useSocket();
+
+    const [
+
+        chats,
+
+        setChats
+
+    ] = useState([]);
+
+    const [
+
+        selectedChatId,
+
+        setSelectedChatId
+
+    ] = useState(null);
+
+    const [
+
+        loadingChats,
+
+        setLoadingChats
+
+    ] = useState(true);
+
+    const [
+
+        loadingMessages,
+
+        setLoadingMessages
+
+    ] = useState(false);
+
+    const [
+
+        creatingChat,
+
+        setCreatingChat
+
+    ] = useState(false);
 
     /*
     |--------------------------------------------------------------------------
-    | Chats
+    | Load Chats
     |--------------------------------------------------------------------------
     */
 
-    const chats = useMemo(
+    const loadChats = useCallback(
 
-        () => chatsData,
+        async () => {
+
+            setLoadingChats(true);
+
+            try {
+
+                const result =
+                    await getChats();
+
+                const normalized =
+                    result
+                        .map(normalizeChat)
+                        .filter(Boolean);
+
+                setChats(normalized);
+
+                setSelectedChatId(
+
+                    (current) =>
+
+                        current ??
+                        normalized[0]?.id ??
+                        null
+
+                );
+
+            }
+
+            catch (error) {
+
+                console.error(
+
+                    "Failed to load chats:",
+
+                    error
+
+                );
+
+            }
+
+            finally {
+
+                setLoadingChats(false);
+
+            }
+
+        },
 
         []
 
@@ -47,21 +217,567 @@ function HomePage() {
 
     /*
     |--------------------------------------------------------------------------
+    | Initial Chat Load
+    |--------------------------------------------------------------------------
+    */
+
+    useEffect(() => {
+
+        void loadChats();
+
+    }, [
+
+        loadChats
+
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
     | Selected Chat
     |--------------------------------------------------------------------------
     */
 
-    const [
+    const selectedChat =
+        chats.find(
 
-        selectedChat,
+            (chat) =>
 
-        setSelectedChat
+                chat.id ===
+                selectedChatId
 
-    ] = useState(
+        ) ?? null;
 
-        chats[0] ?? null
+    /*
+    |--------------------------------------------------------------------------
+    | Load Message History
+    |--------------------------------------------------------------------------
+    */
 
-    );
+    useEffect(() => {
+
+        if (!selectedChatId) {
+
+            return;
+
+        }
+
+        let cancelled = false;
+
+        async function loadMessages() {
+
+            setLoadingMessages(true);
+
+            try {
+
+                const messages =
+                    await getChatMessages(
+
+                        selectedChatId
+
+                    );
+
+                if (cancelled) {
+
+                    return;
+
+                }
+
+                setChats(
+
+                    (currentChats) =>
+
+                        currentChats.map(
+
+                            (chat) =>
+
+                                chat.id ===
+                                selectedChatId
+
+                                    ? {
+
+                                        ...chat,
+
+                                        messages
+
+                                    }
+
+                                    : chat
+
+                        )
+
+                );
+
+            }
+
+            catch (error) {
+
+                if (!cancelled) {
+
+                    console.error(
+
+                        "Failed to load messages:",
+
+                        error
+
+                    );
+
+                }
+
+            }
+
+            finally {
+
+                if (!cancelled) {
+
+                    setLoadingMessages(false);
+
+                }
+
+            }
+
+        }
+
+        void loadMessages();
+
+        return () => {
+
+            cancelled = true;
+
+        };
+
+    }, [
+
+        selectedChatId
+
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Join Selected Chat Room
+    |--------------------------------------------------------------------------
+    */
+
+    useEffect(() => {
+
+        if (
+
+            !socket ||
+
+            !connected ||
+
+            !selectedChatId
+
+        ) {
+
+            return;
+
+        }
+
+        socket.emit(
+
+            "chat:join",
+
+            {
+
+                chatPublicId:
+                    selectedChatId
+
+            },
+
+            (response) => {
+
+                if (!response?.success) {
+
+                    console.error(
+
+                        "Failed to join chat:",
+
+                        response?.message
+
+                    );
+
+                }
+
+            }
+
+        );
+
+        return () => {
+
+            if (socket.connected) {
+
+                socket.emit(
+
+                    "chat:leave",
+
+                    {
+
+                        chatPublicId:
+                            selectedChatId
+
+                    }
+
+                );
+
+            }
+
+        };
+
+    }, [
+
+        socket,
+
+        connected,
+
+        selectedChatId
+
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Receive New Messages
+    |--------------------------------------------------------------------------
+    */
+
+    useEffect(() => {
+
+        if (!socket) {
+
+            return;
+
+        }
+
+        function handleNewMessage(
+
+            message
+
+        ) {
+
+            const normalized =
+                normalizeMessage(
+                    message
+                );
+
+            if (!normalized) {
+
+                return;
+
+            }
+
+            setChats(
+
+                (currentChats) =>
+
+                    currentChats.map(
+
+                        (chat) => {
+
+                            if (
+
+                                chat.id !==
+                                normalized.chatPublicId
+
+                            ) {
+
+                                return chat;
+
+                            }
+
+                            const exists =
+                                chat.messages?.some(
+
+                                    (item) =>
+
+                                        item.id ===
+                                        normalized.id
+
+                                );
+
+                            if (exists) {
+
+                                return chat;
+
+                            }
+
+                            return {
+
+                                ...chat,
+
+                                messages: [
+
+                                    ...(chat.messages ?? []),
+
+                                    normalized
+
+                                ]
+
+                            };
+
+                        }
+
+                    )
+
+            );
+
+        }
+
+        socket.on(
+
+            "message:new",
+
+            handleNewMessage
+
+        );
+
+        return () => {
+
+            socket.off(
+
+                "message:new",
+
+                handleNewMessage
+
+            );
+
+        };
+
+    }, [
+
+        socket
+
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Select Chat
+    |--------------------------------------------------------------------------
+    */
+
+    const handleSelectChat =
+        useCallback(
+
+            (chatId) => {
+
+                setSelectedChatId(
+
+                    chatId
+
+                );
+
+            },
+
+            []
+
+        );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Create Private Chat
+    |--------------------------------------------------------------------------
+    */
+
+    const handleCreateChat =
+        useCallback(
+
+            async (targetPublicId) => {
+
+                if (
+
+                    !targetPublicId?.trim() ||
+
+                    creatingChat
+
+                ) {
+
+                    return;
+
+                }
+
+                setCreatingChat(true);
+
+                try {
+
+                    const result =
+                        await createPrivateChat(
+
+                            targetPublicId.trim()
+
+                        );
+
+                    const newChat =
+                        normalizeChat(
+                            result
+                        );
+
+                    if (!newChat) {
+
+                        return;
+
+                    }
+
+                    setChats(
+
+                        (currentChats) => {
+
+                            const exists =
+                                currentChats.some(
+
+                                    (chat) =>
+
+                                        chat.id ===
+                                        newChat.id
+
+                                );
+
+                            if (exists) {
+
+                                return currentChats;
+
+                            }
+
+                            return [
+
+                                newChat,
+
+                                ...currentChats
+
+                            ];
+
+                        }
+
+                    );
+
+                    setSelectedChatId(
+
+                        newChat.id
+
+                    );
+
+                }
+
+                catch (error) {
+
+                    console.error(
+
+                        "Failed to create chat:",
+
+                        error
+
+                    );
+
+                }
+
+                finally {
+
+                    setCreatingChat(false);
+
+                }
+
+            },
+
+            [
+
+                creatingChat
+
+            ]
+
+        );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Send Message
+    |--------------------------------------------------------------------------
+    */
+
+    const handleSendMessage =
+        useCallback(
+
+            async (text) => {
+
+                if (
+
+                    !socket ||
+
+                    !connected ||
+
+                    !selectedChatId ||
+
+                    !text?.trim()
+
+                ) {
+
+                    return false;
+
+                }
+
+                return new Promise(
+
+                    (resolve) => {
+
+                        socket.emit(
+
+                            "message:send",
+
+                            {
+
+                                chatPublicId:
+                                    selectedChatId,
+
+                                text:
+                                    text.trim(),
+
+                                messageType:
+                                    "text",
+
+                                metadata: {}
+
+                            },
+
+                            (response) => {
+
+                                if (
+
+                                    response?.success
+
+                                ) {
+
+                                    resolve(true);
+
+                                    return;
+
+                                }
+
+                                console.error(
+
+                                    "Message send failed:",
+
+                                    response?.message
+
+                                );
+
+                                resolve(false);
+
+                            }
+
+                        );
+
+                    }
+
+                );
+
+            },
+
+            [
+
+                socket,
+
+                connected,
+
+                selectedChatId
+
+            ]
+
+        );
 
     /*
     |--------------------------------------------------------------------------
@@ -93,17 +809,54 @@ function HomePage() {
 
             <Sidebar
 
+                user={user}
+
                 chats={chats}
 
-                selectedChat={selectedChat}
+                selectedChatId={
+                    selectedChatId
+                }
 
-                setSelectedChat={setSelectedChat}
+                onSelectChat={
+                    handleSelectChat
+                }
+
+                onCreateChat={
+                    handleCreateChat
+                }
+
+                creatingChat={
+                    creatingChat
+                }
+
+                onLogout={
+                    logout
+                }
+
+                connected={
+                    connected
+                }
 
             />
 
             <ChatArea
 
                 chat={selectedChat}
+
+                currentUser={user}
+
+                loading={
+                    loadingChats ||
+                    loadingMessages
+                }
+
+                onSendMessage={
+                    handleSendMessage
+                }
+
+                connected={
+                    connected
+                }
 
             />
 

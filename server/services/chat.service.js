@@ -14,7 +14,9 @@ import {
 
     createPrivateChat,
 
-    addChatMember
+    addChatMember,
+
+    updateChatCounters
 
 } from "../repositories/chat.repository.js";
 
@@ -145,7 +147,7 @@ export async function createPrivateChatService({
 
             {
 
-                chatId: chat.chatId,
+                chatId: chat.id,
 
                 userId: requesterId,
 
@@ -167,7 +169,7 @@ export async function createPrivateChatService({
 
             {
 
-                chatId: chat.chatId,
+                chatId: chat.id,
 
                 userId: targetUser.id,
 
@@ -175,6 +177,11 @@ export async function createPrivateChatService({
 
             }
 
+        );
+
+        await updateChatCounters(
+            client,
+            chat.id
         );
 
         /*

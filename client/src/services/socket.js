@@ -114,6 +114,48 @@ export function connectSocket(
         }
 
     );
+    socket.on("connect", () => {
+        console.log(
+         "🟢 [ShadowDock Socket] connected:",
+         socket.id
+        );
+    });
+
+    socket.on("disconnect", (reason) => {
+        console.log(
+            "🔴 [ShadowDock Socket] disconnected:",
+            reason
+        );
+    });
+
+    socket.on("connect_error", (error) => {
+        console.error(
+         "❌ [ShadowDock Socket] connect_error:",
+          error.message,
+         error
+        );
+    });
+
+    socket.io.on("reconnect_attempt", (attempt) => {
+        console.log(
+         "🟡 [ShadowDock Socket] reconnect attempt:",
+         attempt
+        );
+    });
+
+    socket.io.on("reconnect", (attempt) => {
+        console.log(
+          "🟢 [ShadowDock Socket] reconnected after:",
+         attempt
+        );
+    });
+
+    socket.io.on("reconnect_error", (error) => {
+        console.error(
+          "❌ [ShadowDock Socket] reconnect_error:",
+         error.message
+        );
+    });
 
     socket.connect();
 

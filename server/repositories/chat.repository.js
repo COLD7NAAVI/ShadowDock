@@ -202,6 +202,8 @@ export async function findChatMember(
         WHERE
             chat_id = $1
             AND user_id = $2
+            AND left_at IS NULL
+            AND banned_at IS NULL
         LIMIT 1;
         `,
         [

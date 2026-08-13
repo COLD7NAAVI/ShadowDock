@@ -61,14 +61,12 @@ function getBrowser() {
 }
 
 function getDeviceType() {
-
     return /Mobi|Android|iPhone|iPad/i.test(
         navigator.userAgent
     )
-        ? "Mobile"
-        : "Desktop";
+        ? "mobile"
+        : "desktop";
 }
-
 function getArchitecture() {
 
     return navigator.userAgentData?.architecture ??
