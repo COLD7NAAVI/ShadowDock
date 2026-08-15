@@ -8,6 +8,7 @@ import {
 
 import MessageBubble from "./MessageBubble.jsx";
 
+
 export default function ChatArea({
 
     chat,
@@ -21,6 +22,7 @@ export default function ChatArea({
     connected,
 
 }) {
+    console.log("CHAT AREA:", chat);
 
     const [
 

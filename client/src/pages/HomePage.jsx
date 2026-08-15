@@ -176,7 +176,10 @@ function HomePage() {
                     result
                         .map(normalizeChat)
                         .filter(Boolean);
-
+                console.log(
+                    "NORMALIZED CHATS:",
+                    normalized
+                );
                 setChats(normalized);
 
                 setSelectedChatId(
@@ -709,6 +712,10 @@ function HomePage() {
                     return false;
 
                 }
+                console.log(
+                    "SELECTED CHAT ID:",
+                    selectedChatId
+                );
 
                 return new Promise(
 

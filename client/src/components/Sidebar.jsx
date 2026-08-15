@@ -40,6 +40,8 @@ export default function Sidebar({
 
     ] = useState("");
 
+    console.log("SIDEBAR CHATS:", chats);
+
     const filteredChats =
         chats.filter(
 
@@ -79,6 +81,8 @@ export default function Sidebar({
     ) {
 
         event.preventDefault();
+        console.log("FORM SUBMITTED");
+        console.log(targetPublicId);
 
         if (!targetPublicId.trim()) {
 

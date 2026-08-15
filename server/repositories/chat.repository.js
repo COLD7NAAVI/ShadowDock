@@ -1,5 +1,5 @@
 import { query } from "../config/db.js";
-
+import { generatePublicId } from "../utils/idGenerator.js";
 /*
 |--------------------------------------------------------------------------
 | Chat Repository
@@ -425,10 +425,14 @@ export async function createPrivateChat(
     client,
     ownerId
 ) {
+    const publicId =
+        generatePublicId("chat");
+
     const result = await client.query(
         `
         INSERT INTO chats (
 
+            public_id,
             chat_type,
             owner_id
 
@@ -436,8 +440,9 @@ export async function createPrivateChat(
 
         VALUES (
 
+            $1,
             'private',
-            $1
+            $2
 
         )
 
@@ -457,6 +462,7 @@ export async function createPrivateChat(
             updated_at;
         `,
         [
+            publicId,
             ownerId
         ]
     );

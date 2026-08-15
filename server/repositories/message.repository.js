@@ -1,5 +1,5 @@
 import { query } from "../config/db.js";
-
+import { nanoid } from "nanoid";
 /*
 |--------------------------------------------------------------------------
 | ShadowDock Messenger
@@ -56,6 +56,7 @@ const MESSAGE_COLUMNS = `
     m.created_at,
     m.updated_at,
     m.deleted_at,
+    m.deleted_for_everyone,
     m.thread_root_message_id,
     m.delivery_status,
     m.edited_at,
@@ -84,13 +85,9 @@ const MESSAGE_WITH_CHAT_COLUMNS = `
 |
 */
 
-export async function findMessageById(
-    messageId
-) {
-
-    const result = await query(
-
-        `
+export async function findMessageById(messageId) {
+  const result = await query(
+    `
         SELECT
 
             ${MESSAGE_WITH_CHAT_COLUMNS}
@@ -108,16 +105,10 @@ export async function findMessageById(
         LIMIT 1;
         `,
 
-        [
+    [messageId],
+  );
 
-            messageId
-
-        ]
-
-    );
-
-    return result.rows[0] ?? null;
-
+  return result.rows[0] ?? null;
 }
 
 /*
@@ -129,13 +120,9 @@ export async function findMessageById(
 |
 */
 
-export async function findMessageByPublicId(
-    publicId
-) {
-
-    const result = await query(
-
-        `
+export async function findMessageByPublicId(publicId) {
+  const result = await query(
+    `
         SELECT
 
             ${MESSAGE_WITH_CHAT_COLUMNS}
@@ -153,16 +140,10 @@ export async function findMessageByPublicId(
         LIMIT 1;
         `,
 
-        [
+    [publicId],
+  );
 
-            publicId
-
-        ]
-
-    );
-
-    return result.rows[0] ?? null;
-
+  return result.rows[0] ?? null;
 }
 
 /*
@@ -181,27 +162,13 @@ export async function findMessageByPublicId(
 |
 */
 
-export async function findMessagesByPublicIds(
-    publicIds = []
-) {
+export async function findMessagesByPublicIds(publicIds = []) {
+  if (!Array.isArray(publicIds) || publicIds.length === 0) {
+    return [];
+  }
 
-    if (
-
-        !Array.isArray(publicIds)
-
-        ||
-
-        publicIds.length === 0
-
-    ) {
-
-        return [];
-
-    }
-
-    const result = await query(
-
-        `
+  const result = await query(
+    `
         SELECT
 
             ${MESSAGE_WITH_CHAT_COLUMNS}
@@ -221,16 +188,10 @@ export async function findMessagesByPublicIds(
             m.created_at ASC;
         `,
 
-        [
+    [publicIds],
+  );
 
-            publicIds
-
-        ]
-
-    );
-
-    return result.rows;
-
+  return result.rows;
 }
 /*
 |--------------------------------------------------------------------------
@@ -244,55 +205,53 @@ export async function findMessagesByPublicIds(
 */
 
 export async function createMessage(
+  client,
 
-    client,
+  {
+    chatId,
 
-    {
+    senderId,
 
-        chatId,
+    senderPublicId,
 
-        senderId,
+    content,
 
-        senderPublicId,
+    messageType = "text",
 
-        content,
+    metadata = {},
 
-        messageType = "text",
+    replyToMessageId = null,
 
-        metadata = {},
+    threadRootMessageId = null,
 
-        replyToMessageId = null,
+    forwardedFromMessageId = null,
 
-        threadRootMessageId = null,
+    forwardedFromChatId = null,
 
-        forwardedFromMessageId = null,
+    forwardedFromUserId = null,
 
-        forwardedFromChatId = null,
+    scheduledAt = null,
 
-        forwardedFromUserId = null,
+    expiresAt = null,
 
-        scheduledAt = null,
+    encrypted = false,
 
-        expiresAt = null,
+    encryptionVersion = null,
 
-        encrypted = false,
+    messageNonce = null,
 
-        encryptionVersion = null,
+    encryptedKey = null,
 
-        messageNonce = null,
-
-        encryptedKey = null,
-
-        encryptionAlgorithm = null
-
-    }
-
+    encryptionAlgorithm = null,
+  },
 ) {
+  const MESSAGE_PUBLIC_ID_LENGTH = 20;
+  const messagePublicId = `msg_${nanoid(MESSAGE_PUBLIC_ID_LENGTH)}`;
 
-    const result = await client.query(
-
-        `
+  const result = await client.query(
+    `
         INSERT INTO messages (
+            public_id,
 
             chat_id,
 
@@ -336,93 +295,92 @@ export async function createMessage(
 
         VALUES (
 
-            $1,
+            $1,   -- public_id
 
-            $2,
+            $2,   -- chat_id
 
-            $3,
+            $3,   -- sender_id
 
-            $4,
+            $4,   -- sender_public_id
 
-            $5,
+            $5,   -- content
 
-            $6,
+            $6,   -- message_type
 
-            $7,
+            $7,   -- metadata
 
-            $8,
+            $8,   -- reply_to_message_id
 
-            $9,
+            $9,   -- thread_root_message_id
 
-            $10,
+            $10,  -- forwarded_from_message_id
 
-            $11,
+            $11,  -- forwarded_from_chat_id
 
-            $12,
+            $12,  -- forwarded_from_user_id
 
-            $13,
+            $13,  -- scheduled_at
 
-            $14,
+            $14,  -- expires_at
 
-            $15,
+            $15,  -- encrypted
 
-            $16,
+            $16,  -- encryption_version
 
-            $17,
+            $17,  -- message_nonce
 
-            $18,
+            $18,  -- encrypted_key
 
-            $2
+            $19,  -- encryption_algorithm
 
+            $3    -- created_by
         )
 
         RETURNING *;
         `,
 
-        [
+    [
+    messagePublicId,
 
-            chatId,
+    chatId,
 
-            senderId,
+    senderId,
 
-            senderPublicId,
+    senderPublicId,
 
-            content,
+    content,
 
-            messageType,
+    messageType,
 
-            metadata,
+    metadata,
 
-            replyToMessageId,
+    replyToMessageId,
 
-            threadRootMessageId,
+    threadRootMessageId,
 
-            forwardedFromMessageId,
+    forwardedFromMessageId,
 
-            forwardedFromChatId,
+    forwardedFromChatId,
 
-            forwardedFromUserId,
+    forwardedFromUserId,
 
-            scheduledAt,
+    scheduledAt,
 
-            expiresAt,
+    expiresAt,
 
-            encrypted,
+    encrypted,
 
-            encryptionVersion,
+    encryptionVersion,
 
-            messageNonce,
+    messageNonce,
 
-            encryptedKey,
+    encryptedKey,
 
-            encryptionAlgorithm
+    encryptionAlgorithm
+],
+  );
 
-        ]
-
-    );
-
-    return result.rows[0];
-
+  return result.rows[0];
 }
 
 /*
@@ -435,26 +393,20 @@ export async function createMessage(
 */
 
 export async function updateMessage(
+  client,
 
-    client,
+  {
+    messageId,
 
-    {
+    content,
 
-        messageId,
+    metadata,
 
-        content,
-
-        metadata,
-
-        editorId
-
-    }
-
+    editorId,
+  },
 ) {
-
-    const result = await client.query(
-
-        `
+  const result = await client.query(
+    `
         UPDATE messages
 
         SET
@@ -482,22 +434,10 @@ export async function updateMessage(
         RETURNING *;
         `,
 
-        [
+    [content, metadata, editorId, messageId],
+  );
 
-            content,
-
-            metadata,
-
-            editorId,
-
-            messageId
-
-        ]
-
-    );
-
-    return result.rows[0] ?? null;
-
+  return result.rows[0] ?? null;
 }
 
 /*
@@ -510,24 +450,18 @@ export async function updateMessage(
 */
 
 export async function softDeleteMessage(
+  client,
 
-    client,
+  {
+    messageId,
 
-    {
+    deletedBy,
 
-        messageId,
-
-        deletedBy,
-
-        deleteForEveryone = false
-
-    }
-
+    deleteForEveryone = false,
+  },
 ) {
-
-    const result = await client.query(
-
-        `
+  const result = await client.query(
+    `
         UPDATE messages
 
         SET
@@ -549,20 +483,10 @@ export async function softDeleteMessage(
         RETURNING *;
         `,
 
-        [
+    [deletedBy, deleteForEveryone, messageId],
+  );
 
-            deletedBy,
-
-            deleteForEveryone,
-
-            messageId
-
-        ]
-
-    );
-
-    return result.rows[0] ?? null;
-
+  return result.rows[0] ?? null;
 }
 
 /*
@@ -576,22 +500,16 @@ export async function softDeleteMessage(
 */
 
 export async function restoreMessage(
+  client,
 
-    client,
+  {
+    messageId,
 
-    {
-
-        messageId,
-
-        restoredBy
-
-    }
-
+    restoredBy,
+  },
 ) {
-
-    const result = await client.query(
-
-        `
+  const result = await client.query(
+    `
         UPDATE messages
 
         SET
@@ -615,18 +533,10 @@ export async function restoreMessage(
         RETURNING *;
         `,
 
-        [
+    [restoredBy, messageId],
+  );
 
-            restoredBy,
-
-            messageId
-
-        ]
-
-    );
-
-    return result.rows[0] ?? null;
-
+  return result.rows[0] ?? null;
 }
 /*
 |--------------------------------------------------------------------------
@@ -647,20 +557,16 @@ export async function restoreMessage(
 */
 
 export async function getChatMessages(
+  chatPublicId,
 
-    chatPublicId,
+  userId,
 
-    userId,
+  limit = 50,
 
-    limit = 50,
-
-    before = null
-
+  before = null,
 ) {
-
-    const result = await query(
-
-        `
+  const result = await query(
+    `
         SELECT
 
             ${MESSAGE_COLUMNS},
@@ -744,28 +650,16 @@ export async function getChatMessages(
         LIMIT $4;
         `,
 
-        [
+    [chatPublicId, userId, before, limit],
+  );
 
-            chatPublicId,
-
-            userId,
-
-            before,
-
-            limit
-
-        ]
-
-    );
-
-    /*
+  /*
     ------------------------------------------------------------
     Convert newest-first into chronological order.
     ------------------------------------------------------------
     */
 
-    return result.rows.reverse();
-
+  return result.rows.reverse();
 }
 
 /*
@@ -782,16 +676,12 @@ export async function getChatMessages(
 */
 
 export async function getMessagesAfter(
+  chatId,
 
-    chatId,
-
-    timestamp
-
+  timestamp,
 ) {
-
-    const result = await query(
-
-        `
+  const result = await query(
+    `
         SELECT
 
             ${MESSAGE_WITH_CHAT_COLUMNS}
@@ -819,18 +709,10 @@ export async function getMessagesAfter(
             m.created_at ASC;
         `,
 
-        [
+    [chatId, timestamp],
+  );
 
-            chatId,
-
-            timestamp
-
-        ]
-
-    );
-
-    return result.rows;
-
+  return result.rows;
 }
 
 /*
@@ -847,15 +729,9 @@ export async function getMessagesAfter(
 |
 */
 
-export async function getLatestChatMessage(
-
-    chatId
-
-) {
-
-    const result = await query(
-
-        `
+export async function getLatestChatMessage(chatId) {
+  const result = await query(
+    `
         SELECT
 
             ${MESSAGE_WITH_CHAT_COLUMNS}
@@ -881,16 +757,10 @@ export async function getLatestChatMessage(
         LIMIT 1;
         `,
 
-        [
+    [chatId],
+  );
 
-            chatId
-
-        ]
-
-    );
-
-    return result.rows[0] ?? null;
-
+  return result.rows[0] ?? null;
 }
 /*
 |--------------------------------------------------------------------------
@@ -901,15 +771,9 @@ export async function getLatestChatMessage(
 |
 */
 
-export async function countChatMessages(
-
-    chatId
-
-) {
-
-    const result = await query(
-
-        `
+export async function countChatMessages(chatId) {
+  const result = await query(
+    `
         SELECT
 
             COUNT(*)::INTEGER AS total
@@ -925,16 +789,10 @@ export async function countChatMessages(
             deleted_at IS NULL;
         `,
 
-        [
+    [chatId],
+  );
 
-            chatId
-
-        ]
-
-    );
-
-    return result.rows[0].total;
-
+  return result.rows[0].total;
 }
 
 /*
@@ -949,16 +807,12 @@ export async function countChatMessages(
 */
 
 export async function countUnreadMessages(
+  chatId,
 
-    chatId,
-
-    userId
-
+  userId,
 ) {
-
-    const result = await query(
-
-        `
+  const result = await query(
+    `
         WITH last_read AS (
 
             SELECT
@@ -1028,18 +882,10 @@ export async function countUnreadMessages(
         );
         `,
 
-        [
+    [chatId, userId],
+  );
 
-            chatId,
-
-            userId
-
-        ]
-
-    );
-
-    return result.rows[0]?.unread_count ?? 0;
-
+  return result.rows[0]?.unread_count ?? 0;
 }
 
 /*
@@ -1056,18 +902,14 @@ export async function countUnreadMessages(
 */
 
 export async function searchMessages(
+  chatId,
 
-    chatId,
+  searchText,
 
-    searchText,
-
-    limit = 50
-
+  limit = 50,
 ) {
-
-    const result = await query(
-
-        `
+  const result = await query(
+    `
         SELECT
 
             ${MESSAGE_WITH_CHAT_COLUMNS}
@@ -1145,20 +987,10 @@ export async function searchMessages(
         LIMIT $3;
         `,
 
-        [
+    [chatId, searchText, limit],
+  );
 
-            chatId,
-
-            searchText,
-
-            limit
-
-        ]
-
-    );
-
-    return result.rows;
-
+  return result.rows;
 }
 
 /*
@@ -1170,15 +1002,9 @@ export async function searchMessages(
 |
 */
 
-export async function findReplies(
-
-    messageId
-
-) {
-
-    const result = await query(
-
-        `
+export async function findReplies(messageId) {
+  const result = await query(
+    `
         SELECT
 
             ${MESSAGE_WITH_CHAT_COLUMNS}
@@ -1202,16 +1028,10 @@ export async function findReplies(
             m.created_at ASC;
         `,
 
-        [
+    [messageId],
+  );
 
-            messageId
-
-        ]
-
-    );
-
-    return result.rows;
-
+  return result.rows;
 }
 /*
 |--------------------------------------------------------------------------
@@ -1223,22 +1043,16 @@ export async function findReplies(
 */
 
 export async function pinMessage(
+  client,
 
-    client,
+  {
+    messageId,
 
-    {
-
-        messageId,
-
-        pinnedBy
-
-    }
-
+    pinnedBy,
+  },
 ) {
-
-    const result = await client.query(
-
-        `
+  const result = await client.query(
+    `
         UPDATE messages
 
         SET
@@ -1260,18 +1074,10 @@ export async function pinMessage(
         RETURNING *;
         `,
 
-        [
+    [pinnedBy, messageId],
+  );
 
-            pinnedBy,
-
-            messageId
-
-        ]
-
-    );
-
-    return result.rows[0] ?? null;
-
+  return result.rows[0] ?? null;
 }
 
 /*
@@ -1284,16 +1090,12 @@ export async function pinMessage(
 */
 
 export async function unpinMessage(
+  client,
 
-    client,
-
-    messageId
-
+  messageId,
 ) {
-
-    const result = await client.query(
-
-        `
+  const result = await client.query(
+    `
         UPDATE messages
 
         SET
@@ -1313,16 +1115,10 @@ export async function unpinMessage(
         RETURNING *;
         `,
 
-        [
+    [messageId],
+  );
 
-            messageId
-
-        ]
-
-    );
-
-    return result.rows[0] ?? null;
-
+  return result.rows[0] ?? null;
 }
 
 /*
@@ -1342,16 +1138,12 @@ export async function unpinMessage(
 */
 
 export async function updateMessageCounters(
+  client,
 
-    client,
-
-    messageId
-
+  messageId,
 ) {
-
-    await client.query(
-
-        `
+  await client.query(
+    `
         UPDATE messages
 
         SET
@@ -1405,14 +1197,8 @@ export async function updateMessageCounters(
             id = $1;
         `,
 
-        [
-
-            messageId
-
-        ]
-
-    );
-
+    [messageId],
+  );
 }
 
 /*

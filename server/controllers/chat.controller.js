@@ -34,6 +34,7 @@ import {
 |
 */
 
+
 export const createPrivateChat =
 
     asyncHandler(
@@ -45,6 +46,10 @@ export const createPrivateChat =
             res
 
         ) => {
+
+            console.log(
+                 req.body
+            );
 
             const {
 

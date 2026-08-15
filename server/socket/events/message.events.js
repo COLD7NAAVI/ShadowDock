@@ -289,6 +289,19 @@ export default function registerMessageEvents(
                 Broadcast after successful COMMIT.
                 ----------------------------------------------------------
                 */
+                console.log(
+                   "SAVED MESSAGE:"
+                )
+
+                console.log(message)
+
+                console.log(
+                    "CHAT PUBLIC ID:"
+                )
+
+                console.log(
+                    message.chat_public_id
+                )
 
                 io.to(
 
