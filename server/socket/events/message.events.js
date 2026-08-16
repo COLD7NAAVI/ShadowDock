@@ -300,18 +300,20 @@ export default function registerMessageEvents(
                 )
 
                 console.log(
-                    message.chat_public_id
+                    chatPublicId
                 )
 
                 io.to(
 
-                    `chat:${message.chat_public_id}`
+                    `chat:${chatPublicId}`
 
                 ).emit(
 
                     EVENTS.NEW,
-
-                    message
+                    {
+                        ...message,
+                        chat_public_id: chatPublicId
+                    }
 
                 );
 

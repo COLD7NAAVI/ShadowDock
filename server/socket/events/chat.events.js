@@ -884,6 +884,7 @@ export default function registerChatEvents(
 
     );
 
+    
     /*
     ------------------------------------------------------------
     Leave Chat
