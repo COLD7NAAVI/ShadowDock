@@ -149,7 +149,7 @@ export async function getChatMessages(
 
         .filter(Boolean)
 
-        .reverse();
+       
 
 }
 

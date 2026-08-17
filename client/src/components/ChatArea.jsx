@@ -239,7 +239,7 @@ export default function ChatArea({
                     chat.messages.map(
 
                         (item) => {
-
+                            console.log(item);
                             const own =
 
                                 item.senderPublicId ===
