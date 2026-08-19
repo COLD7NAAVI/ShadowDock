@@ -677,8 +677,17 @@ export async function deleteMessageService(
         const deletedMessage = await softDeleteMessage(
 
             client,
+            {
 
-            message.id
+                messageId:
+
+                    message.id,
+
+                deletedBy:
+
+                    senderId
+
+            }
 
         );
 

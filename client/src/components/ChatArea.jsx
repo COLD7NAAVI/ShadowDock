@@ -19,6 +19,8 @@ export default function ChatArea({
 
     onSendMessage,
 
+    onDeleteMessage,
+
     connected,
 
 }) {
@@ -257,6 +259,10 @@ export default function ChatArea({
                                     message={item}
 
                                     own={own}
+
+                                    onDeleteMessage={
+                                        onDeleteMessage
+                                    }
 
                                 />
 

@@ -555,9 +555,18 @@ export default function registerMessageEvents(
                 ).emit(
 
                     EVENTS.DELETED,
+                    {
 
-                    message
+                        public_id:
 
+                            message.public_id,
+
+                        chat_public_id:
+
+                            message.chat_public_id
+
+                    }
+                    
                 );
 
                 ackSuccess(

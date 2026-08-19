@@ -573,3 +573,20 @@ body {
 
   color: #bfdbfe;
 }
+.message-bubble {
+    position: relative;
+}
+
+.message-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 100;
+}
+
+.delete-message-button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}

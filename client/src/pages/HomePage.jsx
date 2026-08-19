@@ -531,6 +531,65 @@ function HomePage() {
             handleNewMessage
 
         );
+        
+        function handleDeletedMessage(
+
+            message
+
+        ) {
+
+            setChats(
+
+                (currentChats) =>
+
+                    currentChats.map(
+
+                        (chat) => {
+
+                            if (
+
+                                chat.id !==
+
+                             message.chat_public_id
+
+                            ) {
+
+                                return chat;
+
+                            }
+
+                            return {
+
+                                ...chat,
+
+                                messages:
+
+                                    chat.messages.filter(
+
+                                        (item) =>
+
+                                            item.publicId !==
+
+                                            message.public_id
+
+                                    )
+
+                            };
+
+                        }
+
+                    )
+
+            );
+
+        }
+        socket.on(
+
+            "message:deleted",
+
+            handleDeletedMessage
+
+        );
 
         return () => {
 
@@ -539,6 +598,13 @@ function HomePage() {
                 "message:new",
 
                 handleNewMessage
+
+            );
+             socket.off(
+
+                "message:deleted",
+
+                handleDeletedMessage
 
             );
 
@@ -786,6 +852,34 @@ function HomePage() {
 
         );
 
+    const handleDeleteMessage = useCallback(
+        async (message) => {
+            if (!socket || !connected || !message) {
+                return;
+            }
+
+            socket.emit(
+                "message:delete",
+                {
+                    messagePublicId:
+                        message.publicId,
+                },
+                (response) => {
+                    if (!response?.success) {
+                        console.error(
+                            "Delete failed:",
+                            response?.message
+                        );
+                    }
+                }
+            );
+        },
+        [
+            socket,
+            connected,
+        ]
+    );
+
     /*
     |--------------------------------------------------------------------------
     | Layout
@@ -859,6 +953,10 @@ function HomePage() {
 
                 onSendMessage={
                     handleSendMessage
+                }
+
+                onDeleteMessage={
+                    handleDeleteMessage
                 }
 
                 connected={
