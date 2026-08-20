@@ -5,19 +5,12 @@ import {
 import ApiError from "../utils/ApiError.js";
 
 import {
-
     getUserChats,
-
     findUserByPublicId,
-
     findPrivateChat,
-
     createPrivateChat,
-
     addChatMember,
-
     updateChatCounters
-
 } from "../repositories/chat.repository.js";
 
 /*
@@ -28,29 +21,25 @@ import {
 | Creates a private conversation between two users.
 |
 | Workflow
-| --------
+|
 | 1. Validate target user.
 | 2. Prevent self-chat.
 | 3. Return existing chat if found.
 | 4. Create chat.
 | 5. Add requester.
 | 6. Add target.
-| 7. Commit transaction.
+| 7. Update counters.
+| 8. Commit transaction.
 |
 */
 
 export async function createPrivateChatService({
-
     requesterId,
-
     targetPublicId
-
 }) {
-
     const client = await getClient();
 
     try {
-
         await client.query("BEGIN");
 
         /*
@@ -59,20 +48,16 @@ export async function createPrivateChatService({
         |--------------------------------------------------------------------------
         */
 
-        const targetUser = await findUserByPublicId(
-            targetPublicId
-        );
-
-        if (!targetUser) {
-
-            throw new ApiError(
-
-                404,
-
-                "User not found."
-
+        const targetUser =
+            await findUserByPublicId(
+                targetPublicId
             );
 
+        if (!targetUser) {
+            throw new ApiError(
+                404,
+                "User not found."
+            );
         }
 
         /*
@@ -81,16 +66,13 @@ export async function createPrivateChatService({
         |--------------------------------------------------------------------------
         */
 
-        if (targetUser.id === requesterId) {
-
+        if (
+            targetUser.id === requesterId
+        ) {
             throw new ApiError(
-
                 400,
-
                 "You cannot create a chat with yourself."
-
             );
-
         }
 
         /*
@@ -99,26 +81,21 @@ export async function createPrivateChatService({
         |--------------------------------------------------------------------------
         */
 
-        const existingChat = await findPrivateChat(
-
-            requesterId,
-
-            targetUser.id
-
-        );
+        const existingChat =
+            await findPrivateChat(
+                requesterId,
+                targetUser.id
+            );
 
         if (existingChat) {
-
-            await client.query("COMMIT");
+            await client.query(
+                "COMMIT"
+            );
 
             return {
-
                 created: false,
-
                 chat: existingChat
-
             };
-
         }
 
         /*
@@ -127,13 +104,11 @@ export async function createPrivateChatService({
         |--------------------------------------------------------------------------
         */
 
-        const chat = await createPrivateChat(
-
-            client,
-
-            requesterId
-
-        );
+        const chat =
+            await createPrivateChat(
+                client,
+                requesterId
+            );
 
         /*
         |--------------------------------------------------------------------------
@@ -142,19 +117,12 @@ export async function createPrivateChatService({
         */
 
         await addChatMember(
-
             client,
-
             {
-
                 chatId: chat.id,
-
                 userId: requesterId,
-
                 role: "owner"
-
             }
-
         );
 
         /*
@@ -164,20 +132,19 @@ export async function createPrivateChatService({
         */
 
         await addChatMember(
-
             client,
-
             {
-
                 chatId: chat.id,
-
                 userId: targetUser.id,
-
                 role: "member"
-
             }
-
         );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Cached Counters
+        |--------------------------------------------------------------------------
+        */
 
         await updateChatCounters(
             client,
@@ -190,20 +157,17 @@ export async function createPrivateChatService({
         |--------------------------------------------------------------------------
         */
 
-        await client.query("COMMIT");
+        await client.query(
+            "COMMIT"
+        );
 
         return {
-
             created: true,
-
             chat
-
         };
-
     }
 
     catch (error) {
-
         /*
         |--------------------------------------------------------------------------
         | Rollback Transaction
@@ -211,33 +175,39 @@ export async function createPrivateChatService({
         */
 
         try {
-
-            await client.query("ROLLBACK");
-
+            await client.query(
+                "ROLLBACK"
+            );
         }
 
         catch {
-
             /*
             | Ignore rollback failure.
-            | Original error is more important.
+            | The original error is more important.
             */
-
         }
 
         throw error;
-
     }
 
     finally {
-
         client.release();
-
     }
-
 }
-export async function getUserChatsService(userId) {
-    const chats = await getUserChats(userId);
 
-    return chats;
+/*
+|--------------------------------------------------------------------------
+| Get User Chats Service
+|--------------------------------------------------------------------------
+|
+| Returns all active chats belonging to a user.
+|
+*/
+
+export async function getUserChatsService(
+    userId
+) {
+    return await getUserChats(
+        userId
+    );
 }

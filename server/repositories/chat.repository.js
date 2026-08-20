@@ -636,6 +636,8 @@ export async function getUserChats(
 
                 AND cm2.banned_at IS NULL
 
+                AND u.deleted_at IS NULL
+
             LIMIT 1
 
         ) AS other_user

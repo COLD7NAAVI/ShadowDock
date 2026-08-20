@@ -47,9 +47,7 @@ export const createPrivateChat =
 
         ) => {
 
-            console.log(
-                 req.body
-            );
+            
 
             const {
 

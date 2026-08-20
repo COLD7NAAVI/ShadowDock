@@ -51,10 +51,27 @@ import {
 function normalizeChat(chat) {
 
     if (!chat) {
-
         return null;
-
     }
+
+    const isPrivate =
+        chat.chat_type === "private" ||
+        chat.chatType === "private";
+
+    const name =
+        isPrivate
+            ? (
+                chat.other_display_name ??
+                chat.otherDisplayName ??
+                chat.other_username ??
+                chat.otherUsername ??
+                "Unknown User"
+            )
+            : (
+                chat.title ??
+                chat.name ??
+                "Untitled Chat"
+            );
 
     return {
 
@@ -70,16 +87,34 @@ function normalizeChat(chat) {
             chat.publicId ??
             chat.id,
 
-        name:
-            chat.name ??
-            chat.display_name ??
-            chat.username ??
-            "Unknown",
+        name,
 
         otherUsername:
             chat.other_username ??
             chat.otherUsername ??
             "",
+
+        otherDisplayName:
+            chat.other_display_name ??
+            chat.otherDisplayName ??
+            "",
+
+        otherPublicId:
+            chat.other_user_public_id ??
+            chat.otherUserPublicId ??
+            "",
+
+        avatar:
+            isPrivate
+                ? (
+                    chat.other_avatar ??
+                    chat.otherAvatar ??
+                    null
+                )
+                : (
+                    chat.photo ??
+                    null
+                ),
 
         messages:
             Array.isArray(chat.messages)
@@ -92,11 +127,8 @@ function normalizeChat(chat) {
                 chat.unreadCount ??
                 0
             )
-
     };
-
 }
-
 function HomePage() {
 
     const {
