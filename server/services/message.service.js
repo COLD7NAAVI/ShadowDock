@@ -206,15 +206,20 @@ export async function saveMessage(
 
         );
 
-        /*
-        ------------------------------------------------------------
-        Socket Broadcast
-        ------------------------------------------------------------
-        Future:
-            io.to(chat.public_id)
-              .emit("message:new", message);
-        ------------------------------------------------------------
-        */
+/*
+------------------------------------------------------------
+Socket Broadcast
+------------------------------------------------------------
+
+Realtime broadcasting is handled by the Socket.IO
+event layer after this service successfully saves
+and commits the message.
+
+This service remains responsible only for message
+business logic and transaction handling.
+
+------------------------------------------------------------
+*/
 
         return message;
 

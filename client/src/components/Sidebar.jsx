@@ -3,6 +3,11 @@ import {
     useState,
 
 } from "react";
+import {
+
+    useNavigate
+
+} from "react-router-dom";
 
 export default function Sidebar({
 
@@ -23,6 +28,8 @@ export default function Sidebar({
     connected,
 
 }) {
+    const navigate =
+        useNavigate();
 
     const [
 
@@ -114,13 +121,53 @@ export default function Sidebar({
 
                     </div>
 
-                    <div className="sidebar-user">
+                    <button
+                        type="button"
+                        className="sidebar-user"
+                        onClick={() =>
+                            navigate("/profile")
+                        }
+                        title="Open profile"
+                    >
+                        <div className="sidebar-user-avatar">
 
-                        {user?.displayName ||
-                         user?.username ||
-                         "User"}
+                            {
+                                (
+                                    user?.displayName ||
+                                    user?.display_name ||
+                                    user?.username ||
+                                    "U"
+                                )
+                                    .charAt(0)
+                                    .toUpperCase()
+                            }
 
-                    </div>
+                        </div>
+
+                        <div className="sidebar-user-info">
+
+                            <span className="sidebar-user-name">
+
+                                {
+                                    user?.displayName ||
+                                    user?.display_name ||
+                                    user?.username ||
+                                    "User"
+                                }
+
+                            </span>
+
+                            <span className="sidebar-user-label">
+
+                                View profile
+
+                            </span>
+
+                        </div>
+
+                    </button>
+
+                    
 
                 </div>
 

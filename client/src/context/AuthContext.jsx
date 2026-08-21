@@ -333,6 +333,42 @@ export function AuthProvider({
     ]);
 
     /*
+|--------------------------------------------------------------------------
+| Update Current User
+|--------------------------------------------------------------------------
+*/
+
+const updateCurrentUser = useCallback(
+
+    (
+
+        updates
+
+    ) => {
+
+        setUser(
+
+            (
+
+                currentUser
+
+            ) => ({
+
+                ...currentUser,
+
+                ...updates
+
+            })
+
+        );
+
+    },
+
+    []
+
+);
+
+    /*
     |--------------------------------------------------------------------------
     | Context value
     |--------------------------------------------------------------------------
@@ -355,7 +391,9 @@ export function AuthProvider({
 
             logout,
 
-            restoreSession
+            restoreSession,
+
+            updateCurrentUser
 
         }),
 
@@ -371,7 +409,9 @@ export function AuthProvider({
 
             logout,
 
-            restoreSession
+            restoreSession,
+
+            updateCurrentUser
 
         ]
 

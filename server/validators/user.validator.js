@@ -16,7 +16,9 @@ export const updateProfileValidator = [
     }),
 
   body("avatar_url")
-    .optional()
+    .optional({
+      checkFalsy: true
+    })
     .isURL(),
 ];
 

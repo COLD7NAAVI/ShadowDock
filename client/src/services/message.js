@@ -139,8 +139,10 @@ export async function getChatMessages(
         response.data?.data || [];
 
     /*
-    Backend currently returns newest-first.
-    UI displays oldest → newest.
+    Backend response is already in chronological order.
+
+    UI displays messages oldest → newest, so no reversal
+    is required here.
     */
 
     return messages

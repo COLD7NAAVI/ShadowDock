@@ -100,58 +100,112 @@ export async function findUserByPublicId(publicId) {
 */
 
 export async function updateProfile(
-
     userId,
+    data
+) {
 
-    {
-        display_name,
-        bio,
-        avatar_url
+    const fields = [];
+
+    const values = [];
+
+    let index = 1;
+
+
+    if (
+        data.display_name !== undefined
+    ) {
+
+        fields.push(
+            `display_name = $${index++}`
+        );
+
+        values.push(
+            data.display_name
+        );
+
     }
 
-) {
+
+    if (
+        data.bio !== undefined
+    ) {
+
+        fields.push(
+            `bio = $${index++}`
+        );
+
+        values.push(
+            data.bio
+        );
+
+    }
+
+
+    if (
+        data.avatar_url !== undefined
+    ) {
+
+        fields.push(
+            `avatar = $${index++}`
+        );
+
+        values.push(
+            data.avatar_url
+        );
+
+    }
+
+
+    if (
+        fields.length === 0
+    ) {
+
+        return await findUserById(
+            userId
+        );
+
+    }
+
+
+    fields.push(
+        "updated_at = NOW()"
+    );
+
+    values.push(
+        userId
+    );
+
 
     const result = await db.query(
 
         `
         UPDATE users
-
         SET
-
-            display_name = $1,
-
-            bio = $2,
-
-            avatar = $3,
-
-            updated_at = NOW()
-
-        WHERE id = $4
-
+            ${fields.join(", ")}
+        WHERE id = $${index}
         RETURNING
-
+            id,
             public_id,
             username,
             display_name,
+            email,
             bio,
-
             avatar AS avatar_url,
-
+            verified AS is_verified,
+            (status = 'online') AS is_online,
+            status,
+            last_seen,
+            created_at,
             updated_at
         `,
 
-        [
-
-            display_name,
-            bio,
-            avatar_url,
-            userId
-
-        ]
+        values
 
     );
 
+
     return result.rows[0] ?? null;
+
 }
 
 
