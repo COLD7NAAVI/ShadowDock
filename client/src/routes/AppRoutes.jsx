@@ -17,6 +17,7 @@ import HomePage from "../pages/HomePage.jsx";
 import LoginPage from "../pages/LoginPage.jsx";
 import RegisterPage from "../pages/RegisterPage.jsx";
 import ProfilePage from "../pages/ProfilePage.jsx";
+import UserProfilePage from "../pages/UserProfilePage.jsx";
 
 /*
 |--------------------------------------------------------------------------
@@ -110,8 +111,13 @@ function AppRouter() {
                 />
 
                 <Route
-                path="/profile"
-                element={<ProfilePage />}
+                    path="/profile"
+                    element={<ProfilePage />}
+                />
+
+                <Route
+                    path="/profile/:publicId"
+                    element={<UserProfilePage />}
                 />
 
             </Route>
