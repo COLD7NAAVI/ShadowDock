@@ -1,13 +1,10 @@
 import {
-
     useState
-
 } from "react";
 
 import {
-
-    Navigate
-
+    Navigate,
+    Link
 } from "react-router-dom";
 
 import useAuth
@@ -22,43 +19,28 @@ import useAuth
 function LoginPage() {
 
     const {
-
         login,
-
         isAuthenticated
-
     } = useAuth();
 
     const [
-
         email,
-
         setEmail
-
     ] = useState("");
 
     const [
-
         password,
-
         setPassword
-
     ] = useState("");
 
     const [
-
         loading,
-
         setLoading
-
     ] = useState(false);
 
     const [
-
         error,
-
         setError
-
     ] = useState("");
 
     /*
@@ -176,11 +158,8 @@ function LoginPage() {
                 </p>
 
                 <form
-
                     onSubmit={handleSubmit}
-
                     className="auth-form"
-
                 >
 
                     <label>
@@ -188,23 +167,16 @@ function LoginPage() {
                         Email
 
                         <input
-
                             type="email"
-
                             value={email}
-
                             onChange={(event) =>
                                 setEmail(
                                     event.target.value
                                 )
                             }
-
                             autoComplete="username"
-
                             placeholder="Email"
-
                             disabled={loading}
-
                         />
 
                     </label>
@@ -214,23 +186,16 @@ function LoginPage() {
                         Password
 
                         <input
-
                             type="password"
-
                             value={password}
-
                             onChange={(event) =>
                                 setPassword(
                                     event.target.value
                                 )
                             }
-
                             autoComplete="current-password"
-
                             placeholder="Password"
-
                             disabled={loading}
-
                         />
 
                     </label>
@@ -246,13 +211,9 @@ function LoginPage() {
                     )}
 
                     <button
-
                         type="submit"
-
                         disabled={loading}
-
                         className="auth-button"
-
                     >
 
                         {loading
@@ -262,6 +223,20 @@ function LoginPage() {
                     </button>
 
                 </form>
+
+                <p className="auth-switch">
+
+                    Don't have an account?
+
+                    {" "}
+
+                    <Link to="/register">
+
+                        Create one
+
+                    </Link>
+
+                </p>
 
             </section>
 

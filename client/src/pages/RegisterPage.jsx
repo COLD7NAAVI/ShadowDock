@@ -1,115 +1,145 @@
-import { useState } from "react";
+import {
+    useState,
+    useContext
+} from "react";
 
-import { Navigate } from "react-router-dom";
+import {
+    Navigate,
+    Link
+} from "react-router-dom";
 
-import * as authService from "../services/auth";
+import * as authService
+    from "../services/auth";
 
-import { useContext } from "react";
-
-import AuthContext from "../context/AuthContext";
+import AuthContext
+    from "../context/AuthContext";
 
 /*
 |--------------------------------------------------------------------------
-| ShadowDock Messenger
-|--------------------------------------------------------------------------
-|
-| Register Page
+| ShadowDock Register Page
 |--------------------------------------------------------------------------
 */
 
 function RegisterPage() {
 
     const {
-
         isAuthenticated
-
     } = useContext(
-
         AuthContext
-
     );
 
     const [
-
         username,
-
         setUsername
-
     ] = useState("");
 
     const [
-
         email,
-
         setEmail
-
     ] = useState("");
 
     const [
-
         password,
-
         setPassword
-
     ] = useState("");
 
     const [
+        confirmPassword,
+        setConfirmPassword
+    ] = useState("");
 
+    const [
         loading,
-
         setLoading
-
     ] = useState(false);
 
     const [
-
         error,
-
         setError
-
     ] = useState("");
 
     const [
-
         success,
-
         setSuccess
-
     ] = useState("");
+
+    /*
+    |--------------------------------------------------------------------------
+    | Submit
+    |--------------------------------------------------------------------------
+    */
 
     const handleSubmit = async (event) => {
 
         event.preventDefault();
 
-        setLoading(true);
-
         setError("");
-
         setSuccess("");
+
+        if (!username.trim()) {
+
+            setError(
+                "Username is required."
+            );
+
+            return;
+
+        }
+
+        if (!email.trim()) {
+
+            setError(
+                "Email is required."
+            );
+
+            return;
+
+        }
+
+        if (!password) {
+
+            setError(
+                "Password is required."
+            );
+
+            return;
+
+        }
+
+        if (password !== confirmPassword) {
+
+            setError(
+                "Passwords do not match."
+            );
+
+            return;
+
+        }
+
+        setLoading(true);
 
         try {
 
             await authService.register({
 
-                username,
+                username:
+                    username.trim(),
 
-                email,
+                email:
+                    email.trim(),
 
                 password
 
             });
 
             setSuccess(
-
-                "Registration successful. Please login."
-
+                "Account created successfully. You can now log in."
             );
 
             setUsername("");
-
             setEmail("");
-
             setPassword("");
+            setConfirmPassword("");
 
         }
 
@@ -118,6 +148,8 @@ function RegisterPage() {
             setError(
 
                 err?.response?.data?.message ||
+
+                err?.response?.data?.errors?.[0]?.msg ||
 
                 "Registration failed."
 
@@ -133,55 +165,36 @@ function RegisterPage() {
 
     };
 
+    /*
+    |--------------------------------------------------------------------------
+    | Redirect
+    |--------------------------------------------------------------------------
+    */
+
     if (isAuthenticated) {
 
-        return <Navigate to="/" replace />;
+        return (
+
+            <Navigate
+                to="/"
+                replace
+            />
+
+        );
 
     }
 
     return (
 
-        <div
+        <main className="auth-page">
 
-            style={{
+            <section className="auth-card">
 
-                display: "flex",
+                <div className="auth-logo">
 
-                justifyContent: "center",
+                    ◈
 
-                alignItems: "center",
-
-                height: "100vh",
-
-                background: "#020617"
-
-            }}
-
-        >
-
-            <form
-
-                onSubmit={handleSubmit}
-
-                style={{
-
-                    width: 400,
-
-                    padding: 40,
-
-                    background: "#0f172a",
-
-                    borderRadius: 16,
-
-                    display: "flex",
-
-                    flexDirection: "column",
-
-                    gap: 18
-
-                }}
-
-            >
+                </div>
 
                 <h1>
 
@@ -189,113 +202,144 @@ function RegisterPage() {
 
                 </h1>
 
-                <input
+                <p className="auth-subtitle">
 
-                    placeholder="Username"
+                    Join ShadowDock and start communicating.
 
-                    value={username}
+                </p>
 
-                    onChange={(event)=>
-
-                        setUsername(
-
-                            event.target.value
-
-                        )
-
-                    }
-
-                />
-
-                <input
-
-                    type="email"
-
-                    placeholder="Email"
-
-                    value={email}
-
-                    onChange={(event)=>
-
-                        setEmail(
-
-                            event.target.value
-
-                        )
-
-                    }
-
-                />
-
-                <input
-
-                    type="password"
-
-                    placeholder="Password"
-
-                    value={password}
-
-                    onChange={(event)=>
-
-                        setPassword(
-
-                            event.target.value
-
-                        )
-
-                    }
-
-                />
-
-                {
-
-                    error &&
-
-                    <span>
-
-                        {error}
-
-                    </span>
-
-                }
-
-                {
-
-                    success &&
-
-                    <span>
-
-                        {success}
-
-                    </span>
-
-                }
-
-                <button
-
-                    disabled={loading}
-
+                <form
+                    onSubmit={handleSubmit}
+                    className="auth-form"
                 >
 
-                    {
+                    <label>
 
-                        loading
+                        Username
 
-                        ?
+                        <input
+                            type="text"
+                            value={username}
+                            onChange={(event) =>
+                                setUsername(
+                                    event.target.value
+                                )
+                            }
+                            autoComplete="username"
+                            placeholder="Username"
+                            disabled={loading}
+                        />
 
-                        "Creating..."
+                    </label>
 
-                        :
+                    <label>
 
-                        "Register"
+                        Email
 
-                    }
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(event) =>
+                                setEmail(
+                                    event.target.value
+                                )
+                            }
+                            autoComplete="email"
+                            placeholder="Email"
+                            disabled={loading}
+                        />
 
-                </button>
+                    </label>
 
-            </form>
+                    <label>
 
-        </div>
+                        Password
+
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(event) =>
+                                setPassword(
+                                    event.target.value
+                                )
+                            }
+                            autoComplete="new-password"
+                            placeholder="Password"
+                            disabled={loading}
+                        />
+
+                    </label>
+
+                    <label>
+
+                        Confirm Password
+
+                        <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(event) =>
+                                setConfirmPassword(
+                                    event.target.value
+                                )
+                            }
+                            autoComplete="new-password"
+                            placeholder="Confirm password"
+                            disabled={loading}
+                        />
+
+                    </label>
+
+                    {error && (
+
+                        <div className="auth-error">
+
+                            {error}
+
+                        </div>
+
+                    )}
+
+                    {success && (
+
+                        <div className="auth-success">
+
+                            {success}
+
+                        </div>
+
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="auth-button"
+                    >
+
+                        {loading
+                            ? "Creating Account..."
+                            : "Create Account"}
+
+                    </button>
+
+                </form>
+
+                <p className="auth-switch">
+
+                    Already have an account?
+
+                    {" "}
+
+                    <Link to="/login">
+
+                        Login
+
+                    </Link>
+
+                </p>
+
+            </section>
+
+        </main>
 
     );
 
