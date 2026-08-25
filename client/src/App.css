@@ -408,6 +408,31 @@ body {
   flex-shrink: 0;
 }
 
+/* CLICKABLE CHAT USER PROFILE */
+
+.chat-profile-link {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  color: inherit;
+
+  text-decoration: none;
+
+  cursor: pointer;
+
+}
+
+.chat-profile-link:hover {
+
+  opacity: 0.85;
+
+}
+
+
 .chat-header-info {
 
   display: flex;

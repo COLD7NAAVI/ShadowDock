@@ -7,6 +7,9 @@ import {
 } from "react";
 
 import MessageBubble from "./MessageBubble.jsx";
+import {
+    Link
+} from "react-router-dom";
 
 
 export default function ChatArea({
@@ -179,32 +182,68 @@ export default function ChatArea({
 
             <header className="chat-header">
 
-                <div className="avatar large">
+                {chat.otherPublicId ? (
 
-                    {chat.name
-                        ?.charAt(0)
-                        ?.toUpperCase() ||
-                        "?"}
+                    <Link
+                        to={`/profile/${chat.otherPublicId}`}
+                        className="chat-profile-link"
+                    >
 
-                </div>
+                        <div className="avatar large">
 
-                <div className="chat-header-info">
+                            {chat.name
+                                ?.charAt(0)
+                                ?.toUpperCase() ||
+                                "?"}
 
-                    <h2>
+                        </div>
 
-                        {chat.name}
+                        <div className="chat-header-info">
 
-                    </h2>
+                            <h2>
+                                {chat.name}
+                            </h2>
 
-                    <span>
+                            <span>
+                                {connected
+                                    ? "Connected"
+                                    : "Reconnecting..."}
 
-                        {connected
-                            ? "Connected"
-                            : "Reconnecting..."}
+                            </span>
 
-                    </span>
+                        </div>
 
-                </div>
+                    </Link>
+
+                ) : (
+
+                    <>
+                        <div className="avatar large">
+
+                            {chat.name
+                                ?.charAt(0)
+                                ?.toUpperCase() ||
+                                "?"}
+
+                        </div>
+
+                        <div className="chat-header-info">
+
+                            <h2>
+                                {chat.name}
+                            </h2>
+
+                            <span>
+                                {connected
+                                    ? "Connected"
+                                    : "Reconnecting..."}
+
+                            </span>
+
+                        </div>
+                    </>
+
+                )}
 
             </header>
 
